@@ -9,8 +9,9 @@ con **varias cuentas de varios proveedores**:
 - Cuando una cuenta se agota, la sesión **sigue en otra** (del mismo proveedor o de otro) **sin perder el contexto**.
 - Arrastrar y soltar ficheros, pegar capturas con Ctrl+V, permisos con botones, modelo y modo de permisos a mano.
 - **Portátil**: copia la carpeta a otro PC y sigue igual (como mucho, vuelve a autorizar alguna cuenta).
+- Interfaz en **castellano, inglés y catalán** (*Idioma*, abajo del lateral; la primera vez, el de Windows).
 
-> **Estado: completo, pendiente de probar con cuentas reales (v0.7).** Cuentas de suscripción, de clave y de API compatible (GLM, DeepSeek, Kimi, Qwen,
+> **Estado: completo, pendiente de probar con cuentas reales (v0.9).** Cuentas de suscripción, de clave y de API compatible (GLM, DeepSeek, Kimi, Qwen,
 > OpenRouter, Ollama…), sesiones con permisos y adjuntos, **equipos con reparto y relevo automático** entre cuentas y
 > proveedores, **extensiones compartidas** (MCP, skills, órdenes, plugins, instrucciones), **estadísticas, consumo y
 > límites**, **proyectos**, **visor de cambios** e **importar conversaciones** previas del PC. Plan: [Documentacion/MultiAgente_Plan.md](Documentacion/MultiAgente_Plan.md) ·
@@ -188,7 +189,7 @@ En **🧩 Extensiones** (lateral) está lo que usan todas tus cuentas. Los cambi
 | Conversación de cada sesión (y su resumen) | `datos\sesiones\<id>` |
 | Adjuntos y capturas | `datos\adjuntos` |
 | Registro técnico | `datos\logs` |
-| Preferencias de la ventana (ancho del visor, proyectos plegados…) | `datos\webview` |
+| Preferencias de la ventana (idioma, ancho del visor, proyectos plegados…) | `datos\webview` |
 
 **No uses la misma carpeta en dos PCs a la vez**: al renovarse un inicio de sesión en uno, el otro puede perderlo.
 Copiar es mudarse.
@@ -227,6 +228,9 @@ Copiar es mudarse.
   `http://127.0.0.1:8766/tools/ui-prueba.html`.
 - Órdenes de `MultiAgente.exe` para pruebas: `--comprobar [salida.json]` (sin ventana), `--captura <png>`, `--fuera`
   (ventana fuera de la pantalla) y `--cerrar` (cierra el MultiAgente abierto desde esa carpeta).
+- Idiomas de la interfaz: los textos se escriben en castellano en `app.js` con `trad('…')` (los de `index.html`, tal
+  cual) y sus traducciones están en `ui/idiomas/en.js` y `ca.js`, con el mismo texto como clave. `IdiomasTests` avisa
+  si falta alguna. Los mensajes del núcleo (C#) llegan en castellano y la interfaz los traduce con `traducir()`.
 - Librerías de terceros de la interfaz y sus licencias: [src/MultiAgente.App/ui/lib/LICENCIAS.md](src/MultiAgente.App/ui/lib/LICENCIAS.md).
 
 ## Licencia

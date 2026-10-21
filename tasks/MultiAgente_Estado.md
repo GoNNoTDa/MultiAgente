@@ -67,6 +67,13 @@ Plan: `Documentacion/MultiAgente_Plan.md` (leer antes de seguir) · Maqueta: `Do
   - [x] Catálogo: NVIDIA, Groq, Cerebras, Mistral, Together y «Otro compatible con OpenAI» (`traducir: true`)
   - [x] Menos ruido de Codex (aviso de metadatos, MCP que no arranca, errores HTTP en lenguaje llano); MCP por agente
   - [x] Pruebas: 98 (con Claude Code real a través del traductor y un proveedor falso)
+- [x] **v0.8 · Repaso de la interfaz** (21/10/2026)
+  - [x] Crítica y pasadas de diseño (`PRODUCT.md`): tarjeta de permiso con el cambio o la orden a la vista y un solo botón principal, banda de relevo compacta, grupo «Te necesita», «Archivadas» con restaurar, archivar con «Deshacer», iconos propios, diálogo propio en vez de las ventanas del sistema, paleta neutra con contraste comprobado
+- [x] **v0.9 · Idiomas** (21/10/2026)
+  - [x] Interfaz en castellano, inglés y catalán (`ui/idiomas.js`, `ui/idiomas/en.js` y `ca.js`); selector abajo del lateral; la primera vez, el idioma de Windows
+  - [x] Los mensajes del núcleo llegan en castellano y la interfaz los traduce, también los que llevan datos (patrones)
+  - [x] Pruebas: 104 (`IdiomasTests`: ningún texto sin traducir y los mismos datos en cada traducción)
+  - [ ] Siguen en castellano: los diálogos de Windows para elegir carpeta y los errores de arranque (antes de abrir la ventana)
 - [ ] Prueba con cuentas reales (todo lo que depende de credenciales: login, relevo real, MCP con un servidor de verdad, consumo de Claude, coste que informa cada agente)
 
 ## Decisiones (plan §13)

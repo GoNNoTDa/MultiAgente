@@ -42,7 +42,7 @@ Es neutral entre proveedores: no pertenece a ninguno ni debe parecerse a la app 
 
 - Habla con los agentes por ACP (Agent Client Protocol); traductor local para proveedores que solo tienen la API de OpenAI.
 - Las claves se guardan cifradas; nunca en la base de datos ni en los registros.
-- **Idiomas de la interfaz: castellano, inglés y catalán** (decidido; hoy solo existe el castellano).
+- **Idiomas de la interfaz: castellano, inglés y catalán** (hecho en la v0.9; selector abajo del lateral).
 - Sin conexión a servicios propios: todo local salvo las llamadas a los proveedores.
 
 ## Brand Commitments

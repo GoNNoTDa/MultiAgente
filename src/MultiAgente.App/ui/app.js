@@ -41,7 +41,7 @@ function aviso(texto, accion) {
     b.addEventListener('click', (e) => { e.stopPropagation(); d.remove(); accion.alPulsar(); });
     d.append(' ', b);
   }
-  d.title = 'Clic para cerrar';
+  d.title = trad('Clic para cerrar');
   d.addEventListener('click', () => d.remove());
   $('avisos').append(d);
   setTimeout(() => d.remove(), Math.min(20000, (accion ? 8000 : 4500) + texto.length * 50));
@@ -49,7 +49,7 @@ function aviso(texto, accion) {
 
 // Diálogo propio (en vez de las ventanas del sistema): confirmar o pedir uno o varios datos. Devuelve una promesa con
 // true (confirmado), la lista de valores escritos, o null si se cancela.
-function preguntar({ titulo, texto, campos = [], aceptar = 'Aceptar', peligro = false }) {
+function preguntar({ titulo, texto, campos = [], aceptar = trad('Aceptar'), peligro = false }) {
   return new Promise((resolver) => {
     const d = $('dlgPedir');
     $('dqTitulo').textContent = titulo;
@@ -68,7 +68,7 @@ function preguntar({ titulo, texto, campos = [], aceptar = 'Aceptar', peligro = 
       i.autocomplete = 'off';
       if (f.tipo === 'password') {
         const fila = el('span', 'fila-campo');
-        const ver = botonIcono('ojo', 'Ver u ocultar', 'boton fino solo-icono');
+        const ver = botonIcono('ojo', trad('Ver u ocultar'), 'boton fino solo-icono');
         ver.type = 'button';
         ver.addEventListener('click', () => { i.type = i.type === 'password' ? 'text' : 'password'; });
         fila.append(i, ver);
@@ -90,15 +90,15 @@ function preguntar({ titulo, texto, campos = [], aceptar = 'Aceptar', peligro = 
   });
 }
 
-// Mensajes que los agentes dan en inglés y ya conocemos
-function enCastellano(texto) {
+// Mensajes que los agentes dan en inglés y ya conocemos, y los de la aplicación, en el idioma de la interfaz
+function legible(texto) {
   if (!texto) return texto;
   let t = texto;
   const reinicio = /resets?\s+(?:at\s+)?([0-9: ]+(?:am|pm)?)/i.exec(t);
   if (/(you(?:'ve| have) hit your (?:usage )?limit|usage limit reached|rate limit reached)/i.test(t))
-    return 'Límite de uso alcanzado' + (reinicio ? ` · se reinicia a las ${reinicio[1].trim()}` : '');
+    return trad('Límite de uso alcanzado') + (reinicio ? trad(' · se reinicia a las {0}', reinicio[1].trim()) : '');
   t = t.replace(/^Internal error:\s*/i, '');
-  return t;
+  return traducir(t);
 }
 
 // ------------------------------------------------------------------ markdown
@@ -120,13 +120,13 @@ function md(texto) {
 // ------------------------------------------------------------------ textos
 
 const NOMBRES = {
-  default: 'Pedir permiso', acceptEdits: 'Aceptar ediciones', plan: 'Planificar', auto: 'Decide el agente',
-  bypassPermissions: 'Sin preguntar', dontAsk: 'Sin preguntar',
-  low: 'Esfuerzo bajo', medium: 'Esfuerzo medio', high: 'Esfuerzo alto', xhigh: 'Esfuerzo muy alto', max: 'Esfuerzo máximo',
+  default: trad('Pedir permiso'), acceptEdits: trad('Aceptar ediciones'), plan: trad('Planificar'), auto: trad('Decide el agente'),
+  bypassPermissions: trad('Sin preguntar'), dontAsk: trad('Sin preguntar'),
+  low: trad('Esfuerzo bajo'), medium: trad('Esfuerzo medio'), high: trad('Esfuerzo alto'), xhigh: trad('Esfuerzo muy alto'), max: trad('Esfuerzo máximo'),
 };
 const ESTADOS = {
-  Cerrada: 'Cerrada', Arrancando: 'Arrancando…', Esperando: 'Esperándote', Trabajando: 'Trabajando…',
-  PidePermiso: 'Pide permiso', Error: 'Con error',
+  Cerrada: trad('Cerrada'), Arrancando: trad('Arrancando…'), Esperando: trad('Esperándote'), Trabajando: trad('Trabajando…'),
+  PidePermiso: trad('Pide permiso'), Error: trad('Con error'),
 };
 const ICONOS = { read: 'leer', edit: 'editar', delete: 'borrar', move: 'mover', search: 'buscar', execute: 'ejecutar', think: 'pensar', fetch: 'red', switch_mode: 'modo' };
 
@@ -150,35 +150,35 @@ function botonIcono(nombre, titulo, clase) {
   b.append(icono(nombre));
   return b;
 }
-const ESTADO_HERR = { pending: 'pendiente', in_progress: 'en curso', completed: 'hecho', failed: 'falló' };
+const ESTADO_HERR = { pending: trad('pendiente'), in_progress: trad('en curso'), completed: trad('hecho'), failed: trad('falló') };
 
 function nombreOpcion(opcion, valor) {
   const o = (opcion.options || []).find((x) => x.value === valor);
   if (opcion.category === 'mode' && NOMBRES[valor]) return NOMBRES[valor];
-  if (opcion.category === 'thought_level') return valor === 'default' ? 'Esfuerzo predeterminado' : (NOMBRES[valor] || (o && o.name) || valor);
-  if (opcion.category === 'model' && valor === 'default') return 'Modelo predeterminado';
+  if (opcion.category === 'thought_level') return valor === 'default' ? trad('Esfuerzo predeterminado') : (NOMBRES[valor] || (o && o.name) || valor);
+  if (opcion.category === 'model' && valor === 'default') return trad('Modelo predeterminado');
   return (o && o.name) || valor;
 }
 
 function hora(iso) {
   const d = new Date(iso);
-  return isNaN(d) ? '' : d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return isNaN(d) ? '' : d.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
 
 function dinero(v, moneda) {
   if (v == null) return '';
-  return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (moneda === 'EUR' ? '€' : moneda && moneda !== 'USD' ? moneda : '$');
+  return v.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (moneda === 'EUR' ? '€' : moneda && moneda !== 'USD' ? moneda : '$');
 }
 
 function textoUso(c) {
   const u = c.consumo;
-  if (u && u.enfriandoHasta) return { texto: `Ha llegado a su límite · vuelve a las ${hora(u.enfriandoHasta)}`, agotada: true };
+  if (u && u.enfriandoHasta) return { texto: trad('Ha llegado a su límite · vuelve a las {0}', hora(u.enfriandoHasta)), agotada: true };
   const partes = [];
-  if (c.limites && c.limites.presupuesto) partes.push(`mes ${dinero(c.gastoMes || 0, c.moneda)} de ${dinero(c.limites.presupuesto, c.moneda)}`);
+  if (c.limites && c.limites.presupuesto) partes.push(trad('mes {0} de {1}', dinero(c.gastoMes || 0, c.moneda), dinero(c.limites.presupuesto, c.moneda)));
   else if (c.gastoMes) partes.push(`mes ${dinero(c.gastoMes, c.moneda)}`);
   if (u && u.pct5h != null) partes.push(`5 h ${Math.round(u.pct5h)} %`);
   if (u && u.pctSemana != null) partes.push(`semana ${Math.round(u.pctSemana)} %`);
-  if (c.sinMargen && c.autorizada && c.listo) return { texto: partes.join(' · ') + (partes.length ? ' · ' : '') + 'sin margen', agotada: true };
+  if (c.sinMargen && c.autorizada && c.listo) return { texto: partes.join(' · ') + (partes.length ? ' · ' : '') + trad('sin margen'), agotada: true };
   return { texto: partes.join(' · '), agotada: false };
 }
 
@@ -241,6 +241,15 @@ function abrirSesion(id) {
 
 // ------------------------------------------------------------------ lateral
 
+// Lo que el estado trae en castellano: catálogo de proveedores, nombres de proveedor y el título de las sesiones sin nombre
+function traducirEstado(e) {
+  if (IDIOMA === 'es') return;
+  for (const p of (e.catalogo && e.catalogo.proveedores) || []) { p.nombre = traducir(p.nombre); p.notas = traducir(p.notas); }
+  for (const c of e.cuentas || []) c.catalogoNombre = traducir(c.catalogoNombre);
+  for (const s of [...(e.proyectos || []).flatMap((p) => p.sesiones), ...(e.sueltas || []), ...(e.archivadas || [])])
+    if (s.titulo === 'Sesión nueva') s.titulo = trad('Sesión nueva');
+}
+
 function todasLasSesiones() {
   if (!S.estado) return [];
   return [...S.estado.proyectos.flatMap((p) => p.sesiones.map((s) => ({ ...s, proyectoId: p.id }))), ...S.estado.sueltas, ...(S.estado.archivadas || []).map((s) => ({ ...s, archivada: true }))];
@@ -253,7 +262,7 @@ function estadoDe(s) {
 
 let arrastrando = null;          // sesión que se está arrastrando a otro proyecto
 
-const ESTADO_FILA = { PidePermiso: 'pide permiso', Error: 'con error', Trabajando: 'trabajando', Arrancando: 'arrancando', Esperando: 'esperándote' };
+const ESTADO_FILA = { PidePermiso: trad('pide permiso'), Error: trad('con error'), Trabajando: trad('trabajando'), Arrancando: trad('arrancando'), Esperando: trad('esperándote') };
 
 function marcaEstado(estado) {
   if (estado === 'PidePermiso') return icono('atencion', 'est-i atencion');
@@ -275,7 +284,7 @@ function botonSesion(s, opciones = {}) {
   b.append(p);
   b.addEventListener('click', () => abrirSesion(s.id));
   b.addEventListener('contextmenu', (e) => { e.preventDefault(); menuSesion(s, e); });
-  const mas = botonIcono('puntos', `Opciones de «${s.titulo}»`, 'mas-ses');
+  const mas = botonIcono('puntos', trad('Opciones de «{0}»', s.titulo), 'mas-ses');
   mas.setAttribute('aria-haspopup', 'menu');
   mas.addEventListener('click', (e) => { e.stopPropagation(); menuSesion(s, mas); });
   if (!opciones.archivada) {
@@ -300,7 +309,7 @@ function grupoProyecto(p, sesiones, pleg) {
   const clave = p ? p.id : 'sueltas';
   const plegado = pleg.has(clave);
   const t = el('div', 'proyecto' + (plegado ? '' : ' abierto'));
-  t.title = p ? p.ruta : 'Sesiones que no están en ningún proyecto';
+  t.title = p ? p.ruta : trad('Sesiones que no están en ningún proyecto');
   t.tabIndex = 0;
   t.setAttribute('role', 'button');
   t.setAttribute('aria-expanded', String(!plegado));
@@ -309,13 +318,13 @@ function grupoProyecto(p, sesiones, pleg) {
   });
   const flecha = el('span', 'flecha');
   flecha.append(icono('chevron'));
-  t.append(flecha, el('span', 'n', p ? p.nombre : 'Sin proyecto'));
+  t.append(flecha, el('span', 'n', p ? p.nombre : trad('Sin proyecto')));
   if (plegado && sesiones.length) t.append(el('span', 'cuantas', String(sesiones.length)));
   if (p) {
     const acc = el('span', 'acc');
-    const nueva = botonIcono('mas', 'Nueva sesión en este proyecto');
+    const nueva = botonIcono('mas', trad('Nueva sesión en este proyecto'));
     nueva.addEventListener('click', (e) => { e.stopPropagation(); nuevaEnProyecto(p); });
-    const mas = botonIcono('puntos', 'Opciones del proyecto');
+    const mas = botonIcono('puntos', trad('Opciones del proyecto'));
     mas.addEventListener('click', (e) => { e.stopPropagation(); menuProyecto(p, mas); });
     acc.append(nueva, mas);
     t.append(acc);
@@ -341,7 +350,7 @@ function grupoProyecto(p, sesiones, pleg) {
   });
   const nodos = [t];
   if (!plegado) {
-    if (!sesiones.length) nodos.push(el('div', 'vacio dentro', 'Sin sesiones'));
+    if (!sesiones.length) nodos.push(el('div', 'vacio dentro', trad('Sin sesiones')));
     nodos.push(...sesiones.map(botonSesion));
   }
   return nodos;
@@ -352,12 +361,12 @@ function pintarArbol() {
   a.replaceChildren();
   if (!S.estado) return;
   if (!S.estado.proyectos.length && !S.estado.sueltas.length)
-    a.append(el('div', 'vacio', 'Aún no hay sesiones. Empieza una sesión nueva, crea un proyecto o importa tus conversaciones con ＋.'));
+    a.append(el('div', 'vacio', trad('Aún no hay sesiones. Empieza una sesión nueva, crea un proyecto o importa tus conversaciones con ＋.')));
   const pleg = plegados();
   const urgentes = todasLasSesiones().filter((x) => ['PidePermiso', 'Error'].includes(estadoDe(x)));
   if (urgentes.length) {
     const g = el('div', 'grupo-urgente');
-    g.append(el('div', 'titulo-urgente', urgentes.length === 1 ? 'Te necesita' : `Te necesitan (${urgentes.length})`), ...urgentes.map((x) => botonSesion(x)));
+    g.append(el('div', 'titulo-urgente', urgentes.length === 1 ? trad('Te necesita') : trad('Te necesitan ({0})', urgentes.length)), ...urgentes.map((x) => botonSesion(x)));
     a.append(g);
   }
   for (const p of S.estado.proyectos) a.append(...grupoProyecto(p, p.sesiones, pleg));
@@ -369,7 +378,7 @@ function pintarArbol() {
     t.setAttribute('aria-expanded', String(abierta));
     const flecha = el('span', 'flecha');
     flecha.append(icono('chevron'));
-    t.append(flecha, el('span', 'n', 'Archivadas'), el('span', 'cuantas', String(archivadas.length)));
+    t.append(flecha, el('span', 'n', trad('Archivadas')), el('span', 'cuantas', String(archivadas.length)));
     t.addEventListener('click', () => {
       const ahora = plegados();
       if (ahora.has('archivadas')) ahora.delete('archivadas'); else ahora.add('archivadas');
@@ -381,8 +390,8 @@ function pintarArbol() {
       for (const x of archivadas) {
         const f = botonSesion(x, { archivada: true });
         f.classList.add('archivada');
-        const r = botonIcono('restaurar', `Restaurar «${x.titulo}»`, 'mas-ses restaurar');
-        r.addEventListener('click', (e) => { e.stopPropagation(); enviar({ tipo: 'desarchivar', sesionId: x.id }); aviso(`«${x.titulo}» vuelve a su proyecto.`); });
+        const r = botonIcono('restaurar', trad('Restaurar «{0}»', x.titulo), 'mas-ses restaurar');
+        r.addEventListener('click', (e) => { e.stopPropagation(); enviar({ tipo: 'desarchivar', sesionId: x.id }); aviso(trad('«{0}» vuelve a su proyecto.', x.titulo)); });
         f.querySelector('.mas-ses').replaceWith(r);
         a.append(f);
       }
@@ -390,17 +399,17 @@ function pintarArbol() {
 
   const l = $('cuentasLat');
   l.replaceChildren();
-  if (!S.estado.cuentas.length) l.append(el('div', 'vacio', 'Sin cuentas todavía.'));
+  if (!S.estado.cuentas.length) l.append(el('div', 'vacio', trad('Sin cuentas todavía.')));
   for (const c of S.estado.cuentas) {
     const f = el('div', 'cta');
-    const e = !c.listo ? el('span', 'e falta', 'falta instalar') : !c.autorizada ? el('span', 'e falta', 'falta autorizar')
-      : c.problema ? el('span', 'e falta', 'no funciona')
-      : c.consumo && c.consumo.enfriandoHasta ? el('span', 'e falta', 'agotada · ' + hora(c.consumo.enfriandoHasta))
-      : c.sinMargen ? el('span', 'e falta', 'al límite')
+    const e = !c.listo ? el('span', 'e falta', trad('falta instalar')) : !c.autorizada ? el('span', 'e falta', trad('falta autorizar'))
+      : c.problema ? el('span', 'e falta', trad('no funciona'))
+      : c.consumo && c.consumo.enfriandoHasta ? el('span', 'e falta', trad('agotada · ') + hora(c.consumo.enfriandoHasta))
+      : c.sinMargen ? el('span', 'e falta', trad('al límite'))
       : c.consumo && c.consumo.pct5h != null ? el('span', 'e', `5 h ${Math.round(c.consumo.pct5h)} %`)
-      : el('span', 'e', 'lista');
+      : el('span', 'e', trad('lista'));
     f.append(el('span', 'punto ' + claseProveedor(c)), el('span', 'a', c.alias), e);
-    f.title = c.problema || c.catalogoNombre || c.proveedor;
+    f.title = traducir(c.problema) || c.catalogoNombre || c.proveedor;
     l.append(f);
   }
 }
@@ -431,11 +440,11 @@ function pintarInicio() {
       const li = el('li');
       const marca = el('span', r.encontrado ? 'ok' : 'falta');
       marca.append(icono(r.encontrado ? 'hecho' : 'cerrar'));
-      li.append(marca, el('span', '', r.nombre),
-                el('span', 'v', r.encontrado ? (r.version || 'instalado') : 'no está'));
+      li.append(marca, el('span', '', traducir(r.nombre)),
+                el('span', 'v', r.encontrado ? (r.version || trad('instalado')) : trad('no está')));
       ul.append(li);
     }
-    fila.append(ul, el('span', listo ? 'ok' : 'falta', listo ? 'Listo' : 'Falta instalar'));
+    fila.append(ul, el('span', listo ? 'ok' : 'falta', listo ? trad('Listo') : trad('Falta instalar')));
     lista.append(fila);
   }
   const falta = e.requisitos.some((r) => !r.encontrado);
@@ -453,9 +462,9 @@ function pintarCamposNueva() {
   c.camposNueva.hidden = false;
   const proy = S.nueva.proyectoId && e.proyectos.find((p) => p.id === S.nueva.proyectoId);
   if (!proy) S.nueva.proyectoId = null;
-  c.carpetaTxt.textContent = proy ? `${proy.nombre} · ${S.nueva.carpeta}` : (S.nueva.carpeta || 'Elegir carpeta…');
-  c.carpetaBtn.title = S.nueva.carpeta || 'Carpeta de trabajo';
-  c.proyectos.replaceChildren(new Option('Proyectos…', ''));
+  c.carpetaTxt.textContent = proy ? `${proy.nombre} · ${S.nueva.carpeta}` : (S.nueva.carpeta || trad('Elegir carpeta…'));
+  c.carpetaBtn.title = S.nueva.carpeta || trad('Carpeta de trabajo');
+  c.proyectos.replaceChildren(new Option(trad('Proyectos…'), ''));
   for (const p of e.proyectos) c.proyectos.append(new Option(p.nombre, p.id));
   c.proyectos.hidden = e.proyectos.length === 0;
   const elegida = c.selCuenta.value || leerLocal('quienNueva');
@@ -468,15 +477,15 @@ function pintarCamposNueva() {
 function llenarQuien(sel) {
   const e = S.estado;
   sel.replaceChildren();
-  if (!e.cuentas.length) { sel.append(new Option('Añade una cuenta', '')); return; }
+  if (!e.cuentas.length) { sel.append(new Option(trad('Añade una cuenta'), '')); return; }
   const g1 = document.createElement('optgroup');
-  g1.label = 'Automático (reparte y releva)';
-  for (const eq of e.equipos) if (eq.miembros.length) g1.append(new Option(`Automático · ${eq.nombre}`, 'equipo:' + eq.id));
+  g1.label = trad('Automático (reparte y releva)');
+  for (const eq of e.equipos) if (eq.miembros.length) g1.append(new Option(trad('Automático · {0}', eq.nombre), 'equipo:' + eq.id));
   if (g1.children.length) sel.append(g1);
   const g2 = document.createElement('optgroup');
-  g2.label = 'Cuenta fija';
+  g2.label = trad('Cuenta fija');
   for (const cu of e.cuentas) {
-    const nota = !cu.listo ? ' (falta instalar)' : !cu.autorizada ? ' (falta autorizar)' : cu.problema ? ' (no funciona)' : cu.sinMargen ? ' (sin margen)' : '';
+    const nota = !cu.listo ? ' (falta instalar)' : !cu.autorizada ? ' (falta autorizar)' : cu.problema ? trad(' (no funciona)') : cu.sinMargen ? trad(' (sin margen)') : '';
     g2.append(new Option(cu.alias + nota, 'cuenta:' + cu.id));
   }
   sel.append(g2);
@@ -513,7 +522,7 @@ function pintarCabecera() {
     cx.style.setProperty('--p', p);
     cx.classList.toggle('alto', p >= 80);
     cx.querySelector('b').textContent = `${p} %`;
-    cx.title = `Contexto usado: ${ctx.usado.toLocaleString('es-ES')} de ${ctx.tamano.toLocaleString('es-ES')} tokens` + (p >= 80 ? '. El agente compactará la conversación pronto.' : '');
+    cx.title = trad('Contexto usado: {0} de {1} tokens', ctx.usado.toLocaleString(LOCALE), ctx.tamano.toLocaleString(LOCALE)) + (p >= 80 ? trad('. El agente compactará la conversación pronto.') : '');
   }
 }
 
@@ -528,11 +537,11 @@ function pintarAgente() {
   c.banda.hidden = !(ag && ag.error && ag.estado === 'Error');
   if (!c.banda.hidden) {
     const d = el('div');
-    const reintentar = el('button', 'boton fino', 'Reintentar');
+    const reintentar = el('button', 'boton fino', trad('Reintentar'));
     reintentar.addEventListener('click', () => enviar({ tipo: 'abrirSesion', id: S.actual }));
-    const cuentas = el('button', 'boton fino', 'Cuentas');
+    const cuentas = el('button', 'boton fino', trad('Cuentas'));
     cuentas.addEventListener('click', () => mostrar('cuentas'));
-    d.append(el('span', '', ag.error), reintentar, cuentas);
+    d.append(el('span', '', traducir(ag.error)), reintentar, cuentas);
     c.banda.replaceChildren(d);
   }
 
@@ -553,7 +562,7 @@ function pintarAgente() {
   if (cola.length) {
     const d = el('div');
     d.title = cola.join('\n\n');
-    d.append(el('b', '', cola.length === 1 ? 'En cola' : `${cola.length} en cola`), el('span', '', ` · se enviará al terminar: ${cola[0]}`));
+    d.append(el('b', '', cola.length === 1 ? trad('En cola') : trad('{0} en cola', cola.length)), el('span', '', trad(' · se enviará al terminar: {0}', cola[0])));
     c.cola.replaceChildren(d);
   }
 
@@ -565,7 +574,7 @@ function pintarAgente() {
   for (const o of opciones) {
     const sel = el('select', 'chip');
     sel.title = o.description || o.name || '';
-    sel.setAttribute('aria-label', o.name || o.category || 'Opción');
+    sel.setAttribute('aria-label', o.name || o.category || trad('Opción'));
     for (const v of o.options) {
       const op = new Option(nombreOpcion(o, v.value), v.value);
       op.title = v.description || '';
@@ -579,14 +588,14 @@ function pintarAgente() {
 
   const trabaja = estado === 'Trabajando' || estado === 'PidePermiso';
   c.parar.hidden = !trabaja;
-  c.ta.placeholder = estado === 'Error' ? 'El agente no está disponible.'
-    : trabaja ? 'Escribe: se mandará cuando termine (o pulsa ■ para interrumpir)…'
-    : 'Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  / para órdenes';
+  c.ta.placeholder = estado === 'Error' ? trad('El agente no está disponible.')
+    : trabaja ? trad('Escribe: se mandará cuando termine (o pulsa ■ para interrumpir)…')
+    : trad('Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  / para órdenes');
   pintarTrabajando();
 }
 
 const ORDEN_PERMISO = { allow_once: 0, allow_always: 1, reject_once: 2, reject_always: 3 };
-const NOMBRE_PERMISO = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' };
+const NOMBRE_PERMISO = { allow_once: trad('Permitir'), allow_always: trad('Permitir siempre'), reject_once: trad('Rechazar'), reject_always: trad('Rechazar siempre') };
 
 // Lo que se va a aprobar: las diferencias o la orden, a la vista (la herramienta puede estar plegada más arriba)
 function detallePermiso(p) {
@@ -609,9 +618,9 @@ function detallePermiso(p) {
 function tarjetaPermiso(p, ag) {
   const d = el('div');
   d.setAttribute('role', 'alertdialog');
-  d.setAttribute('aria-label', 'Petición de permiso');
+  d.setAttribute('aria-label', trad('Petición de permiso'));
   const t = el('div', 'pt');
-  t.append(icono(ICONOS[p.clase] || 'herramienta'), el('b', '', `${ag && ag.cuenta ? ag.cuenta.alias : 'El agente'} pide permiso: `), document.createTextNode(p.titulo));
+  t.append(icono(ICONOS[p.clase] || 'herramienta'), el('b', '', trad('{0} pide permiso: ', ag && ag.cuenta ? ag.cuenta.alias : trad('El agente'))), document.createTextNode(p.titulo));
   d.append(t);
   const det = detallePermiso(p);
   if (det) d.append(det);
@@ -621,13 +630,13 @@ function tarjetaPermiso(p, ag) {
   for (const o of opciones) {
     const tipo = String(o.kind || '');
     const b = el('button', 'boton' + (tipo === 'allow_once' ? ' prim' : tipo.startsWith('reject') ? ' fantasma' : ''), NOMBRE_PERMISO[tipo] || o.name);
-    b.title = tipo === 'allow_always' ? `No volverá a preguntar por esta herramienta mientras dure la sesión del agente (${o.name})` : o.name;
+    b.title = tipo === 'allow_always' ? trad('No volverá a preguntar por esta herramienta mientras dure la sesión del agente ({0})', o.name) : o.name;
     b.addEventListener('click', () => enviar({ tipo: 'permiso', sesionId: S.actual, peticion: p.id, opcion: o.optionId }));
     if (tipo === 'reject_once' || (!rechazar && tipo.startsWith('reject'))) rechazar = b;
     ops.append(b);
   }
   if (!ops.querySelector('.prim') && ops.firstChild) ops.firstChild.classList.add('prim');
-  ops.append(el('span', 'atajos', rechazar ? 'Intro permite · Esc rechaza' : 'Intro permite'));
+  ops.append(el('span', 'atajos', rechazar ? trad('Intro permite · Esc rechaza') : trad('Intro permite')));
   d.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && rechazar) { e.preventDefault(); e.stopPropagation(); rechazar.click(); }
   });
@@ -642,19 +651,19 @@ function pintarRelevo() {
   if (!r) return;
   const d = el('div');
   if (r.sinDestino) {
-    const b = el('button', 'boton fino', 'Cuentas');
+    const b = el('button', 'boton fino', trad('Cuentas'));
     b.addEventListener('click', () => mostrar('cuentas'));
-    d.append(el('span', '', `${r.motivo}, y ninguna cuenta del equipo tiene margen ahora. La sesión sigue con «${r.de}».`), b);
+    d.append(el('span', '', trad('{0}, y ninguna cuenta del equipo tiene margen ahora. La sesión sigue con «{1}».', traducir(r.motivo), r.de)), b);
   } else {
     const t = el('span');
-    t.title = r.motivo;
-    const reloj = el('span', 'reloj', r.segundos > 0 ? `en ${r.segundos} s` : 'ahora');
+    t.title = traducir(r.motivo);
+    const reloj = el('span', 'reloj', r.segundos > 0 ? trad('en {0} s', r.segundos) : trad('ahora'));
     reloj.setAttribute('aria-hidden', 'true');
-    t.append(icono('modo'), document.createTextNode(` Sigue en «${r.a}» `), reloj,
-             document.createTextNode(r.esperaTurno ? ' al terminar el turno' : ''), el('span', 'motivo', ` · ${r.motivo}`));
-    const ya = el('button', 'boton fino', 'Cambiar ya');
+    t.append(icono('modo'), document.createTextNode(trad(' Sigue en «{0}» ', r.a)), reloj,
+             document.createTextNode(r.esperaTurno ? trad(' al terminar el turno') : ''), el('span', 'motivo', ` · ${traducir(r.motivo)}`));
+    const ya = el('button', 'boton fino', trad('Cambiar ya'));
     ya.addEventListener('click', () => enviar({ tipo: 'relevoYa', sesionId: S.actual }));
-    const no = el('button', 'boton fino fantasma', 'Cancelar');
+    const no = el('button', 'boton fino fantasma', trad('Cancelar'));
     no.addEventListener('click', () => enviar({ tipo: 'relevoCancelar', sesionId: S.actual }));
     d.append(t, ya, no);
   }
@@ -724,7 +733,7 @@ function pintarTrabajando() {
   if (estado === 'Trabajando' || estado === 'Arrancando') {
     const nombre = ag ? ag.cuenta.alias : '';
     const t = el('div', 'trabajando');
-    t.append(el('i'), document.createTextNode(estado === 'Arrancando' ? `Arrancando ${nombre}…` : `${nombre} está trabajando…`));
+    t.append(el('i'), document.createTextNode(estado === 'Arrancando' ? trad('Arrancando {0}…', nombre) : trad('{0} está trabajando…', nombre)));
     if (viejo) viejo.replaceWith(t); else cont.append(t);
     bajar();
   } else if (viejo) viejo.remove();
@@ -752,7 +761,7 @@ function chipAdjunto(a, alQuitar) {
   n.title = a.ruta;
   if (alQuitar) {
     const q = el('button', 'quitar', '✕');
-    q.title = 'Quitar';
+    q.title = trad('Quitar');
     q.addEventListener('click', (e) => { e.stopPropagation(); alQuitar(); });
     n.append(q);
   } else {
@@ -783,7 +792,7 @@ function nodoDiferencias(d) {
       else if (p.removed) { menos++; dif.append(el('div', 'menos', '− ' + l)); }
       else if (lineas.length <= 6) dif.append(el('div', '', '  ' + l));
     }
-    if (!p.added && !p.removed && lineas.length > 6) dif.append(el('div', 'tenue', `  … ${lineas.length} líneas sin cambios`));
+    if (!p.added && !p.removed && lineas.length > 6) dif.append(el('div', 'tenue', trad('  … {0} líneas sin cambios', lineas.length)));
   }
   const cab = el('div');
   cab.append(enlaceRuta(d.path), el('span', 'tenue', `  +${mas} −${menos}`));
@@ -802,9 +811,9 @@ function cuerpoHerramienta(e) {
     else if (item.type === 'content' && item.content) {
       if (item.content.type === 'text') c.append(el('pre', '', item.content.text));
       else if (item.content.type === 'resource_link') c.append(enlaceRuta(decodeURIComponent((item.content.uri || '').replace(/^file:\/\/\//, '')), item.content.name));
-    } else if (item.type === 'terminal') c.append(el('div', 'tenue', '(salida en la terminal del agente)'));
+    } else if (item.type === 'terminal') c.append(el('div', 'tenue', trad('(salida en la terminal del agente)')));
   }
-  if (!c.childNodes.length) c.append(el('div', 'tenue', 'Sin más detalle.'));
+  if (!c.childNodes.length) c.append(el('div', 'tenue', trad('Sin más detalle.')));
   return c;
 }
 
@@ -826,7 +835,7 @@ function nodoEntrada(e) {
       break;
     case 'pensamiento': {
       n = el('details', 'pens');
-      n.append(el('summary', '', 'Razonamiento'), el('div', '', e.texto));
+      n.append(el('summary', '', trad('Razonamiento')), el('div', '', e.texto));
       break;
     }
     case 'herramienta': {
@@ -834,7 +843,7 @@ function nodoEntrada(e) {
       const s = el('summary');
       const ic = el('span', 'ic');
       ic.append(icono(ICONOS[e.clase] || 'herramienta'));
-      s.append(ic, el('span', 'tt', e.titulo || 'Herramienta'),
+      s.append(ic, el('span', 'tt', e.titulo || trad('Herramienta')),
                el('span', 'st ' + (e.estado || ''), ESTADO_HERR[e.estado] || ''));
       n.append(s);
       n.addEventListener('toggle', () => {
@@ -844,7 +853,7 @@ function nodoEntrada(e) {
     }
     case 'plan': {
       n = el('div', 'plan');
-      n.append(el('b', '', 'Tareas'));
+      n.append(el('b', '', trad('Tareas')));
       const ul = el('ul');
       for (const p of e.pasos || []) {
         const li = el('li', p.status || '');
@@ -855,14 +864,14 @@ function nodoEntrada(e) {
       break;
     }
     case 'aviso':
-      n = el('div', 'aviso ' + (e.nivel || ''), enCastellano(e.texto));
+      n = el('div', 'aviso ' + (e.nivel || ''), legible(e.texto));
       break;
     case 'relevo': {
       n = el('div', 'relevo-linea');
       const t = el('span');
-      t.title = e.texto || '';
+      t.title = traducir(e.texto) || '';
       const cuenta = S.estado && S.estado.cuentas.find((c) => c.alias === e.cuenta);
-      t.append(icono('modo'), document.createTextNode(e.nivel ? ` «${e.nivel}» → ` : ' Sigue en '), el('span', 'punto ' + claseProveedor(cuenta)),
+      t.append(icono('modo'), document.createTextNode(e.nivel ? ` «${e.nivel}» → ` : trad(' Sigue en ')), el('span', 'punto ' + claseProveedor(cuenta)),
                document.createTextNode(` «${e.cuenta}»`));
       n.append(t);
       break;
@@ -902,7 +911,7 @@ function crearCaja(contenedor, modo) {
       c.proyectos.value = '';
     });
     c.selCuenta.addEventListener('change', () => guardarLocal('quienNueva', c.selCuenta.value));
-    c.ta.placeholder = '¿Qué hacemos? Escribe, arrastra ficheros o pega una captura (Ctrl+V)…';
+    c.ta.placeholder = trad('¿Qué hacemos? Escribe, arrastra ficheros o pega una captura (Ctrl+V)…');
   }
   return c;
 }
@@ -928,8 +937,8 @@ function enviarDesde(c) {
   if (!texto && !c.adjuntos.length) return;
   const adjuntos = c.adjuntos.map((a) => ({ ruta: a.ruta, nombre: a.nombre }));
   if (c.modo === 'nueva') {
-    if (!S.nueva.carpeta) { aviso('Elige primero la carpeta de trabajo.'); return; }
-    if (!c.selCuenta.value) { aviso('Añade una cuenta para empezar.'); mostrar('cuentas'); return; }
+    if (!S.nueva.carpeta) { aviso(trad('Elige primero la carpeta de trabajo.')); return; }
+    if (!c.selCuenta.value) { aviso(trad('Añade una cuenta para empezar.')); mostrar('cuentas'); return; }
     guardarLocal('quienNueva', c.selCuenta.value);
     c.enviarBtn.disabled = true;
     enviar({ tipo: 'sesionNueva', carpeta: S.nueva.carpeta, proyectoId: S.nueva.proyectoId, quien: c.selCuenta.value, texto, adjuntos });
@@ -1069,15 +1078,15 @@ function pintarTiposCuenta() {
   sel.replaceChildren();
   const grupo = (t) => { const g = document.createElement('optgroup'); g.label = t; sel.append(g); return g; };
   const listo = (p) => (S.estado.proveedores.find((x) => x.id === p) || {}).listo;
-  const g1 = grupo('Suscripción (inicio de sesión con la herramienta oficial)');
-  g1.append(new Option('Claude · Pro / Max / Team' + (listo('Claude') ? '' : ' (falta instalar)'), 'login:Claude'),
-            new Option('Codex · cuenta de ChatGPT' + (listo('Codex') ? '' : ' (falta instalar)'), 'login:Codex'),
-            new Option('Gemini · cuenta de Google' + (listo('Gemini') ? '' : ' (falta instalar)'), 'login:Gemini'));
-  const g2 = grupo('Clave de API del propio proveedor');
+  const g1 = grupo(trad('Suscripción (inicio de sesión con la herramienta oficial)'));
+  g1.append(new Option(trad('Claude · Pro / Max / Team') + (listo('Claude') ? '' : ' (falta instalar)'), 'login:Claude'),
+            new Option(trad('Codex · cuenta de ChatGPT') + (listo('Codex') ? '' : ' (falta instalar)'), 'login:Codex'),
+            new Option(trad('Gemini · cuenta de Google') + (listo('Gemini') ? '' : ' (falta instalar)'), 'login:Gemini'));
+  const g2 = grupo(trad('Clave de API del propio proveedor'));
   g2.append(new Option('Anthropic (Claude)', 'cat:anthropic'), new Option('OpenAI (Codex)', 'api:Codex'), new Option('Google (Gemini)', 'api:Gemini'));
-  const g3 = grupo('Otros modelos con Claude Code (API compatible con Anthropic)');
+  const g3 = grupo(trad('Otros modelos con Claude Code (API compatible con Anthropic)'));
   for (const p of catalogo().filter((x) => x.agente === 'Claude' && x.id !== 'anthropic')) g3.append(new Option(p.nombre, 'cat:' + p.id));
-  const g4 = grupo('Otros modelos con Codex (API compatible con OpenAI)');
+  const g4 = grupo(trad('Otros modelos con Codex (API compatible con OpenAI)'));
   for (const p of catalogo().filter((x) => x.agente === 'Codex')) g4.append(new Option(p.nombre, 'cat:' + p.id));
   sel.value = anterior || 'login:Claude';
   if (!sel.value) sel.selectedIndex = 0;
@@ -1101,18 +1110,18 @@ function cambioTipo() {
   const dl = $('fcModelos');
   dl.replaceChildren(...((cat && cat.modelos) || []).map((m) => new Option(m, m)));
   $('fcModelosInfo').textContent = !cat ? '' : cat.soloModelos ? `Solo funcionan estos: ${cat.modelos.join(', ')}.`
-    : cat.listar ? 'Pulsa «Actualizar lista» para ver los modelos que ofrece ahora el proveedor.' : 'Este proveedor no da su lista: se proponen los conocidos.';
+    : cat.listar ? trad('Pulsa «Actualizar lista» para ver los modelos que ofrece ahora el proveedor.') : trad('Este proveedor no da su lista: se proponen los conocidos.');
   $('fcListar').hidden = !(cat && cat.listar);
   const prov = clase === 'cat' ? (cat && cat.agente) : id;
   const donde = (cat && cat.claveUrl) || ((S.estado.proveedores.find((p) => p.id === prov) || {}).dondeClave);
-  $('fcDondeClave').textContent = donde ? 'Dónde consigo la clave' : '';
+  $('fcDondeClave').textContent = donde ? trad('Dónde consigo la clave') : '';
   $('fcDondeClave').dataset.url = donde || '';
   let ayuda = '';
-  if (clase === 'login') ayuda = 'Al añadirla, pulsa «Autorizar…»: se abre la herramienta oficial para que inicies sesión en el navegador.';
-  else if (cat) ayuda = (cat.agente === 'Codex' ? 'Se usa con el agente de Codex. ' : 'Se usa con el agente de Claude Code (todas sus herramientas). ') + (cat.notas || '');
-  else if (clase === 'api') ayuda = 'La clave se guarda cifrada en la carpeta de MultiAgente.';
+  if (clase === 'login') ayuda = trad('Al añadirla, pulsa «Autorizar…»: se abre la herramienta oficial para que inicies sesión en el navegador.');
+  else if (cat) ayuda = (cat.agente === 'Codex' ? trad('Se usa con el agente de Codex. ') : trad('Se usa con el agente de Claude Code (todas sus herramientas). ')) + (cat.notas || '');
+  else if (clase === 'api') ayuda = trad('La clave se guarda cifrada en la carpeta de MultiAgente.');
   $('fcAyuda').textContent = ayuda;
-  $('fcCatalogo').textContent = cat && cat.confianza ? `Datos del catálogo (${S.estado.catalogo.version}) · confianza ${cat.confianza}` : '';
+  $('fcCatalogo').textContent = cat && cat.confianza ? trad('Datos del catálogo ({0}) · confianza {1}', S.estado.catalogo.version, cat.confianza) : '';
   if (!$('fcAlias').dataset.tocado) $('fcAlias').value = cat ? cat.nombre.split(' (')[0] : ({ Claude: 'Claude', Codex: 'Codex', Gemini: 'Gemini' }[id] || '');
 }
 
@@ -1126,18 +1135,18 @@ function formModelo(c) {
   const lista = el('datalist');
   lista.id = 'cmModelos';
   lista.replaceChildren(...((cat && cat.modelos) || []).map((m) => new Option(m, m)));
-  const ver = el('button', 'boton fino', 'Ver los del proveedor');
+  const ver = el('button', 'boton fino', trad('Ver los del proveedor'));
   ver.hidden = !(cat && cat.listar);
   ver.addEventListener('click', () => { ver.disabled = true; enviar({ tipo: 'modelos', para: 'cuenta', catalogo: c.catalogo, cuentaId: c.id }); });
-  const todos = el('button', 'boton fino', 'Probar cuáles funcionan');
+  const todos = el('button', 'boton fino', trad('Probar cuáles funcionan'));
   todos.hidden = !(cat && cat.traducir && cat.listar);
-  todos.title = 'Prueba con tu clave todos los modelos de chat del proveedor (tarda un poco)';
-  todos.addEventListener('click', () => { todos.disabled = true; todos.textContent = 'Probando modelos…'; enviar({ tipo: 'modelosProbar', id: c.id }); });
-  const ok = el('button', 'boton fino prim', 'Probar y guardar');
-  ok.addEventListener('click', () => { ok.disabled = true; ok.textContent = 'Probando…'; enviar({ tipo: 'cuentaModelo', id: c.id, modelo: entrada.value }); });
-  const l = el('label', '', 'Modelo');
+  todos.title = trad('Prueba con tu clave todos los modelos de chat del proveedor (tarda un poco)');
+  todos.addEventListener('click', () => { todos.disabled = true; todos.textContent = trad('Probando modelos…'); enviar({ tipo: 'modelosProbar', id: c.id }); });
+  const ok = el('button', 'boton fino prim', trad('Probar y guardar'));
+  ok.addEventListener('click', () => { ok.disabled = true; ok.textContent = trad('Probando…'); enviar({ tipo: 'cuentaModelo', id: c.id, modelo: entrada.value }); });
+  const l = el('label', '', trad('Modelo'));
   l.append(entrada, lista);
-  d.append(l, ver, todos, ok, el('span', 'tenue', 'Se prueba con una petición mínima antes de guardarlo (puedes poner varios separados por comas: se queda el primero que funcione). Las sesiones abiertas de esta cuenta siguen con el modelo nuevo.'));
+  d.append(l, ver, todos, ok, el('span', 'tenue', trad('Se prueba con una petición mínima antes de guardarlo (puedes poner varios separados por comas: se queda el primero que funcione). Las sesiones abiertas de esta cuenta siguen con el modelo nuevo.')));
   return d;
 }
 
@@ -1152,28 +1161,28 @@ function pintarCuentas() {
     const logo = el('span', 'logo ' + claseProveedor(c), monograma(c));
     logo.setAttribute('aria-hidden', 'true');
     const n = el('span', 'n', c.alias);
-    const detalle = c.catalogoNombre ? `${c.catalogoNombre} · con ${c.proveedor === 'Claude' ? 'Claude Code' : c.proveedor}` : c.proveedor + (c.tipo === 'Api' ? ' · clave de API' : ' · suscripción');
+    const detalle = c.catalogoNombre ? trad('{0} · con {1}', c.catalogoNombre, c.proveedor === 'Claude' ? 'Claude Code' : c.proveedor) : c.proveedor + (c.tipo === 'Api' ? trad(' · clave de API') : trad(' · suscripción'));
     n.append(el('small', '', detalle + (c.modelo ? ' · ' + c.modelo : '')));
     const uso = textoUso(c);
     if (uso.texto) n.append(el('span', 'uso' + (uso.agotada ? ' agotada' : ''), uso.texto));
     const t = el('span', 't');
-    t.append(!c.listo ? el('span', 'falta', 'Falta instalar el agente') : c.problema ? el('span', 'falta', c.problema) : c.autorizada ? el('span', 'ok', c.tipo === 'Api' ? 'Clave guardada' : 'Autorizada') : el('span', 'falta', 'Falta autorizar'));
+    t.append(!c.listo ? el('span', 'falta', trad('Falta instalar el agente')) : c.problema ? el('span', 'falta', traducir(c.problema)) : c.autorizada ? el('span', 'ok', c.tipo === 'Api' ? trad('Clave guardada') : trad('Autorizada')) : el('span', 'falta', trad('Falta autorizar')));
     const acc = el('span', 'acc');
     if (c.tipo === 'Login') {
-      const b = el('button', 'boton fino' + (c.autorizada ? '' : ' prim'), c.autorizada ? 'Volver a autorizar…' : 'Autorizar…');
-      b.addEventListener('click', () => { enviar({ tipo: 'cuentaAutorizar', id: c.id }); aviso('Se ha abierto una ventana para iniciar sesión. Al terminar, vuelve aquí.'); });
+      const b = el('button', 'boton fino' + (c.autorizada ? '' : ' prim'), c.autorizada ? trad('Volver a autorizar…') : trad('Autorizar…'));
+      b.addEventListener('click', () => { enviar({ tipo: 'cuentaAutorizar', id: c.id }); aviso(trad('Se ha abierto una ventana para iniciar sesión. Al terminar, vuelve aquí.')); });
       acc.append(b);
     } else {
-      const b = el('button', 'boton fino', 'Cambiar clave');
+      const b = el('button', 'boton fino', trad('Cambiar clave'));
       b.addEventListener('click', async () => {
-        const r = await preguntar({ titulo: `Clave nueva para «${c.alias}»`, texto: 'Se guarda cifrada en la carpeta de MultiAgente; la anterior se sustituye.',
-                                    campos: [{ etiqueta: 'Clave de API', tipo: 'password' }], aceptar: 'Guardar clave' });
+        const r = await preguntar({ titulo: trad('Clave nueva para «{0}»', c.alias), texto: trad('Se guarda cifrada en la carpeta de MultiAgente; la anterior se sustituye.'),
+                                    campos: [{ etiqueta: trad('Clave de API'), tipo: 'password' }], aceptar: trad('Guardar clave') });
         if (r && r[0].trim()) enviar({ tipo: 'cuentaClave', id: c.id, clave: r[0].trim() });
       });
       acc.append(b);
     }
     if (c.tipo === 'Api' && c.catalogo) {
-      const mo = el('button', 'boton fino' + (c.problema ? ' prim' : ''), 'Modelo…');
+      const mo = el('button', 'boton fino' + (c.problema ? ' prim' : ''), trad('Modelo…'));
       mo.addEventListener('click', () => {
         const ya = f.querySelector('.form-modelo');
         if (ya) { ya.remove(); return; }
@@ -1181,18 +1190,18 @@ function pintarCuentas() {
       });
       acc.append(mo);
     }
-    const limites = el('button', 'boton fino', 'Límites…');
+    const limites = el('button', 'boton fino', trad('Límites…'));
     limites.addEventListener('click', () => {
       const ya = f.querySelector('.limites:not(.form-modelo)');
       if (ya) { ya.remove(); return; }
       f.append(formLimites(c));
     });
     acc.append(limites);
-    const quitar = el('button', 'boton fino peligro', 'Eliminar…');
-    quitar.title = 'Eliminar la cuenta';
+    const quitar = el('button', 'boton fino peligro', trad('Eliminar…'));
+    quitar.title = trad('Eliminar la cuenta');
     quitar.addEventListener('click', async () => {
-      if (await preguntar({ titulo: `¿Eliminar la cuenta «${c.alias}»?`, peligro: true, aceptar: 'Eliminar cuenta',
-                            texto: 'Se borran su carpeta, con su inicio de sesión, y su clave. Las conversaciones se conservan y pueden seguir con otra cuenta.' }))
+      if (await preguntar({ titulo: trad('¿Eliminar la cuenta «{0}»?', c.alias), peligro: true, aceptar: trad('Eliminar cuenta'),
+                            texto: trad('Se borran su carpeta, con su inicio de sesión, y su clave. Las conversaciones se conservan y pueden seguir con otra cuenta.') }))
         enviar({ tipo: 'cuentaQuitar', id: c.id });
     });
     acc.append(quitar);
@@ -1210,43 +1219,43 @@ function formLimites(c) {
     d.append(l);
     return i;
   };
-  const u5 = campo('Relevar al … % del bloque de 5 h', c.limites.umbral5h, 1);
-  const us = campo('Relevar al … % semanal', c.limites.umbralSemana, 1);
-  const pr = campo(`Presupuesto del mes (${c.moneda === 'EUR' ? '€' : c.moneda || '$'})`, c.limites.presupuesto, 0.5, 'sin límite');
-  const ok = el('button', 'boton fino prim', 'Guardar');
+  const u5 = campo(trad('Relevar al … % del bloque de 5 h'), c.limites.umbral5h, 1);
+  const us = campo(trad('Relevar al … % semanal'), c.limites.umbralSemana, 1);
+  const pr = campo(trad('Presupuesto del mes ({0})', c.moneda === 'EUR' ? '€' : c.moneda || '$'), c.limites.presupuesto, 0.5, trad('sin límite'));
+  const ok = el('button', 'boton fino prim', trad('Guardar'));
   const num = (i) => (i.value.trim() === '' ? null : Number(i.value));
   ok.addEventListener('click', () => enviar({ tipo: 'cuentaLimites', id: c.id, umbral5h: num(u5), umbralSemana: num(us), presupuesto: num(pr) }));
   d.append(ok, el('span', 'tenue', c.proveedor === 'Claude' && c.tipo === 'Login'
-    ? 'Los porcentajes salen del consumo de tu suscripción.'
-    : 'El presupuesto cuenta el coste que informa el agente; al agotarlo, la cuenta pasa a reserva hasta el mes que viene.'));
+    ? trad('Los porcentajes salen del consumo de tu suscripción.')
+    : trad('El presupuesto cuenta el coste que informa el agente; al agotarlo, la cuenta pasa a reserva hasta el mes que viene.')));
   return d;
 }
 
 // ------------------------------------------------------------------ estadísticas
 
 let periodoDias = 7;
-const numero = (n) => (n || 0).toLocaleString('es-ES');
+const numero = (n) => (n || 0).toLocaleString(LOCALE);
 
 function pintarEstadisticas(m) {
   const t = m.total;
   const cifra = (valor, texto) => { const d = el('div', 'cifra'); d.append(el('b', '', valor), el('span', '', texto)); return d; };
-  $('cifras').replaceChildren(cifra(numero(t.turnos), 'turnos'), cifra(numero(t.tokens), 'tokens'),
-                              cifra(t.coste != null ? dinero(t.coste, t.moneda) : '—', 'coste informado'));
+  $('cifras').replaceChildren(cifra(numero(t.turnos), trad('turnos')), cifra(numero(t.tokens), trad('tokens')),
+                              cifra(t.coste != null ? dinero(t.coste, t.moneda) : '—', trad('coste informado')));
   const cab = () => {
     const f = el('div', 'fila-est cab');
-    f.append(el('span', '', ''), el('span', 'num', 'Turnos'), el('span', 'num', 'Tokens'), el('span', 'num', 'Coste'));
+    f.append(el('span', '', ''), el('span', 'num', trad('Turnos')), el('span', 'num', trad('Tokens')), el('span', 'num', trad('Coste')));
     return f;
   };
   const fila = (izq, d) => {
     const f = el('div', 'fila-est');
     const coste = el('span', 'num', d.coste != null ? dinero(d.coste, d.moneda) : '—');
-    if (d.coste == null) coste.title = 'El agente no informa del coste (lo normal en las cuentas de suscripción)';
+    if (d.coste == null) coste.title = trad('El agente no informa del coste (lo normal en las cuentas de suscripción)');
     f.append(izq, el('span', 'num', numero(d.turnos)), el('span', 'num', numero(d.tokens)), coste);
     return f;
   };
   const lc = $('estCuentas');
   lc.replaceChildren(cab());
-  if (!m.porCuenta.length) lc.append(el('div', 'lista-vacia', 'Sin uso en este periodo.'));
+  if (!m.porCuenta.length) lc.append(el('div', 'lista-vacia', trad('Sin uso en este periodo.')));
   for (const c of m.porCuenta) {
     const izq = el('span', 't');
     izq.append(el('span', 'punto ' + claseProveedor(c)), el('span', '', c.cuenta));
@@ -1254,11 +1263,11 @@ function pintarEstadisticas(m) {
   }
   const ls = $('estSesiones');
   ls.replaceChildren(cab());
-  if (!m.porSesion.length) ls.append(el('div', 'lista-vacia', 'Sin uso en este periodo.'));
+  if (!m.porSesion.length) ls.append(el('div', 'lista-vacia', trad('Sin uso en este periodo.')));
   for (const s of m.porSesion) {
     const izq = el('span', 't');
-    const b = el('button', 'enlace', s.titulo);
-    b.title = 'Abrir la sesión';
+    const b = el('button', 'enlace', traducir(s.titulo));
+    b.title = trad('Abrir la sesión');
     b.addEventListener('click', () => abrirSesion(s.id));
     izq.append(b, el('span', 'tenue', [...s.cuentas].join(', ')));
     ls.append(fila(izq, s.datos));
@@ -1270,7 +1279,7 @@ function pintarEstadisticas(m) {
   m.porDia.forEach((d, i) => {
     const b = el('div', 'barra');
     b.style.height = `${(100 * d.datos.tokens) / max}%`;
-    b.title = `${d.dia}: ${numero(d.datos.tokens)} tokens · ${numero(d.datos.turnos)} turnos` + (d.datos.coste != null ? ` · ${dinero(d.datos.coste, d.datos.moneda)}` : '');
+    b.title = trad('{0}: {1} tokens · {2} turnos', d.dia, numero(d.datos.tokens), numero(d.datos.turnos)) + (d.datos.coste != null ? ` · ${dinero(d.datos.coste, d.datos.moneda)}` : '');
     if (i % cada === 0 || m.porDia.length <= 10) b.append(el('span', '', d.dia.slice(5).split('-').reverse().join('/')));
     dias.append(b);
   });
@@ -1279,14 +1288,14 @@ function pintarEstadisticas(m) {
 // ------------------------------------------------------------------ equipos
 
 let borradorEquipo = null;   // equipo nuevo aún sin guardar
-const REGLAS = { Prioridad: 'Prioridad (en orden)', Rotacion: 'Rotación', MenosUsada: 'La menos usada', SuscripcionPrimero: 'Suscripciones primero' };
+const REGLAS = { Prioridad: trad('Prioridad (en orden)'), Rotacion: trad('Rotación'), MenosUsada: trad('La menos usada'), SuscripcionPrimero: trad('Suscripciones primero') };
 
 function pintarEquipos() {
   const l = $('listaEquipos');
   l.replaceChildren();
   const equipos = [...S.estado.equipos];
   if (borradorEquipo) equipos.push(borradorEquipo);
-  if (!equipos.length) l.append(el('p', 'tenue', 'Añade cuentas: se crea solo el equipo «Principal» con todas.'));
+  if (!equipos.length) l.append(el('p', 'tenue', trad('Añade cuentas: se crea solo el equipo «Principal» con todas.')));
   for (const eq of equipos) l.append(tarjetaEquipo(eq));
   $('chkResumen').checked = S.estado.resumenVivo !== false;
 }
@@ -1295,27 +1304,27 @@ function tarjetaEquipo(eq) {
   const t = el('div', 'equipo');
   const cab = el('div', 'cab-eq');
   const nombre = el('input');
-  nombre.type = 'text'; nombre.value = eq.nombre; nombre.maxLength = 40; nombre.setAttribute('aria-label', 'Nombre del equipo');
+  nombre.type = 'text'; nombre.value = eq.nombre; nombre.maxLength = 40; nombre.setAttribute('aria-label', trad('Nombre del equipo'));
   const regla = el('select');
   for (const [v, txt] of Object.entries(REGLAS)) regla.append(new Option(txt, v));
   regla.value = eq.regla;
-  regla.setAttribute('aria-label', 'Cómo reparte');
+  regla.setAttribute('aria-label', trad('Cómo reparte'));
   const otro = el('input'); otro.type = 'checkbox'; otro.checked = eq.permiteOtroProveedor;
-  const lOtro = el('label'); lOtro.append(otro, document.createTextNode(' pasar a otro proveedor'));
+  const lOtro = el('label'); lOtro.append(otro, document.createTextNode(trad(' pasar a otro proveedor')));
   const atras = el('input'); atras.type = 'number'; atras.min = 0; atras.max = 600; atras.value = eq.cuentaAtras;
-  const lAtras = el('label'); lAtras.append(document.createTextNode('cuenta atrás '), atras, document.createTextNode(' s'));
+  const lAtras = el('label'); lAtras.append(document.createTextNode(trad('cuenta atrás ')), atras, document.createTextNode(' s'));
   const der = el('span', 'der');
-  const guardar = el('button', 'boton fino prim', 'Guardar');
+  const guardar = el('button', 'boton fino prim', trad('Guardar'));
   der.append(guardar);
   if (!eq.predeterminado) {
-    const quitar = el('button', 'boton fino peligro', eq.id ? 'Quitar' : 'Descartar');
+    const quitar = el('button', 'boton fino peligro', eq.id ? 'Quitar' : trad('Descartar'));
     quitar.addEventListener('click', async () => {
       if (!eq.id) { borradorEquipo = null; pintarEquipos(); return; }
-      if (await preguntar({ titulo: `¿Quitar el equipo «${eq.nombre}»?`, texto: 'Sus sesiones pasan al equipo predeterminado. Las cuentas no se tocan.', aceptar: 'Quitar equipo', peligro: true }))
+      if (await preguntar({ titulo: trad('¿Quitar el equipo «{0}»?', eq.nombre), texto: trad('Sus sesiones pasan al equipo predeterminado. Las cuentas no se tocan.'), aceptar: trad('Quitar equipo'), peligro: true }))
         enviar({ tipo: 'equipoBorrar', id: eq.id });
     });
     der.append(quitar);
-  } else der.prepend(el('span', 'tenue', 'Predeterminado: lo usa «Automático» si no eliges otro '));
+  } else der.prepend(el('span', 'tenue', trad('Predeterminado: lo usa «Automático» si no eliges otro ')));
   cab.append(nombre, regla, lOtro, lAtras, der);
 
   // Miembros: los del equipo en su orden y, debajo, las demás cuentas (fuera)
@@ -1328,16 +1337,16 @@ function tarjetaEquipo(eq) {
       const c = S.estado.cuentas.find((x) => x.id === id);
       const dentro = orden.includes(id);
       const f = el('div', 'miembro' + (dentro ? '' : ' fuera'));
-      const chk = el('input'); chk.type = 'checkbox'; chk.checked = dentro; chk.setAttribute('aria-label', `«${c.alias}» en el equipo`);
+      const chk = el('input'); chk.type = 'checkbox'; chk.checked = dentro; chk.setAttribute('aria-label', trad('«{0}» en el equipo', c.alias));
       chk.addEventListener('change', () => { orden = chk.checked ? [...orden, id] : orden.filter((x) => x !== id); pintarMiembros(); });
       f.append(el('span', 'num', dentro ? String(orden.indexOf(id) + 1) : ''), chk, el('span', 'punto ' + claseProveedor(c)), el('span', 'a', c.alias));
       const uso = textoUso(c);
       if (uso.texto) f.append(el('span', 'tenue', uso.texto));
       if (dentro) {
         const i = orden.indexOf(id);
-        const sube = botonIcono('chevron', 'Subir', 'sube'); sube.disabled = i === 0;
+        const sube = botonIcono('chevron', trad('Subir'), 'sube'); sube.disabled = i === 0;
         sube.addEventListener('click', () => { [orden[i - 1], orden[i]] = [orden[i], orden[i - 1]]; pintarMiembros(); });
-        const baja = botonIcono('chevron', 'Bajar', 'baja'); baja.disabled = i === orden.length - 1;
+        const baja = botonIcono('chevron', trad('Bajar'), 'baja'); baja.disabled = i === orden.length - 1;
         baja.addEventListener('click', () => { [orden[i + 1], orden[i]] = [orden[i], orden[i + 1]]; pintarMiembros(); });
         f.append(sube, baja);
       }
@@ -1356,7 +1365,7 @@ function tarjetaEquipo(eq) {
 
 function anadirCuenta() {
   const { clase, id, cat } = tipoElegido();
-  if (cat && cat.traducir) { $('fcAnadir').disabled = true; $('fcAnadir').textContent = 'Probando el modelo…'; }
+  if (cat && cat.traducir) { $('fcAnadir').disabled = true; $('fcAnadir').textContent = trad('Probando el modelo…'); }
   enviar({
     tipo: 'cuentaNueva',
     proveedor: clase === 'cat' ? cat.agente : id,
@@ -1378,7 +1387,7 @@ function interruptor(activo, alCambiar, titulo) {
   const l = el('label', 'interr');
   l.title = titulo || '';
   const i = el('input'); i.type = 'checkbox'; i.checked = activo;
-  i.setAttribute('aria-label', titulo || 'Activo');
+  i.setAttribute('aria-label', titulo || trad('Activo'));
   i.addEventListener('change', () => alCambiar(i.checked));
   l.append(i, el('span'));
   return l;
@@ -1395,16 +1404,16 @@ function filaExt(nombre, detalle, acciones, opciones = {}) {
 }
 
 function botonQuitar(ruta, que) {
-  const b = el('button', 'boton fino peligro', 'Quitar');
+  const b = el('button', 'boton fino peligro', trad('Quitar'));
   b.addEventListener('click', async () => {
-    if (await preguntar({ titulo: `¿Quitar ${que}?`, texto: 'Se mueve a la papelera de MultiAgente (datos\\papelera): se puede recuperar a mano.', aceptar: 'Quitar', peligro: true }))
+    if (await preguntar({ titulo: trad('¿Quitar {0}?', que), texto: trad('Se mueve a la papelera de MultiAgente (datos\\papelera): se puede recuperar a mano.'), aceptar: trad('Quitar'), peligro: true }))
       enviar({ tipo: 'extQuitar', ruta });
   });
   return b;
 }
 
 function botonAbrir(ruta) {
-  const b = el('button', 'boton fino', 'Abrir');
+  const b = el('button', 'boton fino', trad('Abrir'));
   b.addEventListener('click', () => enviar({ tipo: 'abrirRuta', ruta }));
   return b;
 }
@@ -1414,49 +1423,49 @@ function pintarExtensiones() {
   // MCP
   const lm = $('listaMcp');
   lm.replaceChildren();
-  if (!ext.mcp.length) lm.append(el('div', 'lista-vacia', 'Aún no hay servidores MCP. Añade uno o impórtalos de tu configuración de Claude, Codex o Gemini.'));
+  if (!ext.mcp.length) lm.append(el('div', 'lista-vacia', trad('Aún no hay servidores MCP. Añade uno o impórtalos de tu configuración de Claude, Codex o Gemini.')));
   for (const s of ext.mcp) {
     const que = s.tipo === 'stdio' ? [s.comando, ...(s.argumentos || [])].join(' ') : `${s.tipo.toUpperCase()} · ${s.url}`;
     const detalle = [que];
     if (s.origen) detalle.push(s.origen);
-    if (s.agentes && s.agentes.length) detalle.push('solo ' + s.agentes.map((a) => ({ Claude: 'Claude Code' })[a] || a).join(', '));
-    if (s.problema) detalle.push(el('small', 'problema', '⚠ ' + s.problema));
-    const editar = el('button', 'boton fino', 'Editar');
+    if (s.agentes && s.agentes.length) detalle.push(trad('solo ') + s.agentes.map((a) => ({ Claude: 'Claude Code' })[a] || a).join(', '));
+    if (s.problema) detalle.push(el('small', 'problema', '⚠ ' + traducir(s.problema)));
+    const editar = el('button', 'boton fino', trad('Editar'));
     editar.addEventListener('click', () => formMcp(s));
-    const quitar = el('button', 'boton fino peligro', 'Quitar');
+    const quitar = el('button', 'boton fino peligro', trad('Quitar'));
     quitar.addEventListener('click', async () => {
-      if (await preguntar({ titulo: `¿Quitar el servidor MCP «${s.nombre}»?`, texto: 'Se borran también sus claves guardadas.', aceptar: 'Quitar', peligro: true }))
+      if (await preguntar({ titulo: trad('¿Quitar el servidor MCP «{0}»?', s.nombre), texto: trad('Se borran también sus claves guardadas.'), aceptar: trad('Quitar'), peligro: true }))
         enviar({ tipo: 'mcpBorrar', id: s.id });
     });
-    lm.append(filaExt(s.nombre, detalle, [interruptor(s.activo, (v) => enviar({ tipo: 'mcpActivar', id: s.id, activo: v }), `Activar «${s.nombre}»`), editar, quitar], { inactivo: !s.activo }));
+    lm.append(filaExt(s.nombre, detalle, [interruptor(s.activo, (v) => enviar({ tipo: 'mcpActivar', id: s.id, activo: v }), trad('Activar «{0}»', s.nombre)), editar, quitar], { inactivo: !s.activo }));
   }
   // Skills
   const ls = $('listaSkills');
   ls.replaceChildren();
-  if (!ext.skills.elementos.length) ls.append(el('div', 'lista-vacia', 'Sin skills todavía.'));
-  for (const k of ext.skills.elementos) ls.append(filaExt(k.nombre, k.descripcion, [botonAbrir(k.ruta), botonQuitar(k.ruta, `la skill «${k.nombre}»`)]));
+  if (!ext.skills.elementos.length) ls.append(el('div', 'lista-vacia', trad('Sin skills todavía.')));
+  for (const k of ext.skills.elementos) ls.append(filaExt(k.nombre, k.descripcion, [botonAbrir(k.ruta), botonQuitar(k.ruta, trad('la skill «{0}»', k.nombre))]));
   // Órdenes, agentes, prompts
   const ce = $('carpetasExt');
   ce.replaceChildren();
   for (const c of ext.carpetas) {
-    const h = el('h2', 'titulo-seccion', c.titulo);
-    const imp = el('button', 'boton fino', 'Importar de mi configuración…'); imp.dataset.importar = c.clave;
-    const an = el('button', 'boton fino', 'Añadir ficheros…'); an.dataset.anadir = c.clave;
-    const ab = el('button', 'boton fino', 'Abrir carpeta'); ab.dataset.carpeta = c.clave;
+    const h = el('h2', 'titulo-seccion', traducir(c.titulo));
+    const imp = el('button', 'boton fino', trad('Importar de mi configuración…')); imp.dataset.importar = c.clave;
+    const an = el('button', 'boton fino', trad('Añadir ficheros…')); an.dataset.anadir = c.clave;
+    const ab = el('button', 'boton fino', trad('Abrir carpeta')); ab.dataset.carpeta = c.clave;
     h.append(imp, an, ab);
     const caja = el('div', 'tarjeta'); caja.id = 'importables-' + c.clave; caja.hidden = true;
     const lista = el('div', 'lista');
-    if (!c.elementos.length) lista.append(el('div', 'lista-vacia', 'Ninguno.'));
+    if (!c.elementos.length) lista.append(el('div', 'lista-vacia', trad('Ninguno.')));
     for (const e of c.elementos) lista.append(filaExt(e.nombre, e.descripcion, [botonAbrir(e.ruta), botonQuitar(e.ruta, `«${e.nombre}»`)]));
     ce.append(h, caja, lista);
   }
   // Plugins
   const lp = $('listaPlugins');
   lp.replaceChildren();
-  if (!ext.plugins.length) lp.append(el('div', 'lista-vacia', 'Ningún plugin instalado todavía.'));
+  if (!ext.plugins.length) lp.append(el('div', 'lista-vacia', trad('Ningún plugin instalado todavía.')));
   for (const p of ext.plugins)
-    lp.append(filaExt(p.nombre, [p.tienda ? `de ${p.tienda}` : null, p.version ? 'versión ' + p.version : null].filter(Boolean).join(' · '),
-      [interruptor(p.activo, (v) => enviar({ tipo: 'pluginActivar', id: p.id, activo: v }), `Activar «${p.nombre}»`)], { inactivo: !p.activo }));
+    lp.append(filaExt(p.nombre, [p.tienda ? trad('de {0}', p.tienda) : null, p.version ? trad('versión ') + p.version : null].filter(Boolean).join(' · '),
+      [interruptor(p.activo, (v) => enviar({ tipo: 'pluginActivar', id: p.id, activo: v }), trad('Activar «{0}»', p.nombre))], { inactivo: !p.activo }));
   // Instrucciones
   if (!instrTocadas) $('instrTexto').value = ext.instrucciones || '';
 }
@@ -1471,7 +1480,7 @@ function listaSeleccion(contenedor, titulo, elementos, textoBoton, alAceptar) {
   contenedor.hidden = false;
   contenedor.replaceChildren(el('h2', '', titulo));
   if (!elementos.length) {
-    contenedor.append(el('p', '', 'No hay nada nuevo que traer.'));
+    contenedor.append(el('p', '', trad('No hay nada nuevo que traer.')));
   } else {
     const sel = el('div', 'sel-lista');
     for (const e of elementos) {
@@ -1490,7 +1499,7 @@ function listaSeleccion(contenedor, titulo, elementos, textoBoton, alAceptar) {
     });
     contenedor.append(sel, ok, document.createTextNode(' '));
   }
-  const cerrar = el('button', 'boton fino', 'Cerrar');
+  const cerrar = el('button', 'boton fino', trad('Cerrar'));
   cerrar.addEventListener('click', () => { contenedor.hidden = true; });
   contenedor.append(cerrar);
 }
@@ -1500,25 +1509,25 @@ function formMcp(s) {
   f.hidden = false;
   const nuevo = !s;
   s = s || { id: null, nombre: '', tipo: 'stdio', comando: 'npx', argumentos: [], url: '', valores: [], activo: true };
-  f.replaceChildren(el('h2', '', nuevo ? 'Servidor MCP nuevo' : `Editar «${s.nombre}»`));
+  f.replaceChildren(el('h2', '', nuevo ? trad('Servidor MCP nuevo') : trad('Editar «{0}»', s.nombre)));
   const campos = el('div', 'campos');
-  const nombre = el('input'); nombre.value = s.nombre; nombre.placeholder = 'p. ej. github';
+  const nombre = el('input'); nombre.value = s.nombre; nombre.placeholder = trad('p. ej. github');
   const tipo = el('select');
-  for (const [v, t] of [['stdio', 'Programa en este equipo (stdio)'], ['http', 'Remoto por HTTP'], ['sse', 'Remoto por SSE (antiguo)']]) tipo.append(new Option(t, v));
+  for (const [v, t] of [['stdio', trad('Programa en este equipo (stdio)')], ['http', trad('Remoto por HTTP')], ['sse', trad('Remoto por SSE (antiguo)')]]) tipo.append(new Option(t, v));
   tipo.value = s.tipo;
-  const comando = el('input'); comando.value = s.comando || ''; comando.placeholder = 'npx, uvx, node, docker, ruta de un .exe…';
-  const args = el('textarea', 'editor'); args.rows = 3; args.value = (s.argumentos || []).join('\n'); args.placeholder = 'Un argumento por línea, p. ej.\n-y\n@modelcontextprotocol/server-github';
+  const comando = el('input'); comando.value = s.comando || ''; comando.placeholder = trad('npx, uvx, node, docker, ruta de un .exe…');
+  const args = el('textarea', 'editor'); args.rows = 3; args.value = (s.argumentos || []).join('\n'); args.placeholder = trad('Un argumento por línea, p. ej.\n-y\n@modelcontextprotocol/server-github');
   const url = el('input'); url.value = s.url || ''; url.placeholder = 'https://…/mcp';
   const lab = (t, c) => { const l = el('label', '', t); l.append(c); return l; };
-  const lComando = lab('Orden', comando), lArgs = lab('Argumentos', args), lUrl = lab('Dirección', url);
+  const lComando = lab(trad('Orden'), comando), lArgs = lab(trad('Argumentos'), args), lUrl = lab(trad('Dirección'), url);
   const valores = el('div', 'valores');
   const tituloValores = el('label');
   const filas = [];
   const filaValor = (v) => {
     const n = el('input'); n.type = 'text'; n.value = v.nombre || ''; n.placeholder = 'NOMBRE';
     const val = el('input'); val.type = v.secreto ? 'password' : 'text'; val.value = v.valor || '';
-    val.placeholder = v.secreto && v.guardado ? '(guardado; escribe para cambiarlo)' : 'valor (admite ${VARIABLE})';
-    const sec = el('input'); sec.type = 'checkbox'; sec.checked = !!v.secreto; sec.title = 'Secreto: se guarda cifrado';
+    val.placeholder = v.secreto && v.guardado ? trad('(guardado; escribe para cambiarlo)') : trad('valor (admite ${VARIABLE})');
+    const sec = el('input'); sec.type = 'checkbox'; sec.checked = !!v.secreto; sec.title = trad('Secreto: se guarda cifrado');
     sec.addEventListener('change', () => { val.type = sec.checked ? 'password' : 'text'; });
     const lSec = el('label'); lSec.append(sec, document.createTextNode(' secreto'));
     const q = el('button', 'boton fino', '✕');
@@ -1528,13 +1537,13 @@ function formMcp(s) {
     filas.push(fila);
   };
   (s.valores || []).forEach(filaValor);
-  const masValor = el('button', 'boton fino', '＋ Añadir');
+  const masValor = el('button', 'boton fino', trad('＋ Añadir'));
   masValor.addEventListener('click', () => filaValor({}));
   const cambioTipo = () => {
     const stdio = tipo.value === 'stdio';
     lComando.hidden = lArgs.hidden = !stdio;
     lUrl.hidden = stdio;
-    tituloValores.textContent = stdio ? 'Variables de entorno' : 'Cabeceras HTTP (p. ej. Authorization)';
+    tituloValores.textContent = stdio ? trad('Variables de entorno') : trad('Cabeceras HTTP (p. ej. Authorization)');
   };
   tipo.addEventListener('change', cambioTipo);
   cambioTipo();
@@ -1547,10 +1556,10 @@ function formMcp(s) {
     agentes.append(l);
     return c;
   });
-  const lAgentes = el('label', '', 'Lo usan');
-  lAgentes.append(agentes, el('span', 'ayuda', 'Quita los agentes en los que no funciona (p. ej. si pide iniciar sesión en cada uno).'));
-  campos.append(lab('Nombre', nombre), lab('Tipo', tipo), lComando, lArgs, lUrl, tituloValores, valores, masValor, lAgentes);
-  const guardar = el('button', 'boton prim', 'Guardar');
+  const lAgentes = el('label', '', trad('Lo usan'));
+  lAgentes.append(agentes, el('span', 'ayuda', trad('Quita los agentes en los que no funciona (p. ej. si pide iniciar sesión en cada uno).')));
+  campos.append(lab(trad('Nombre'), nombre), lab(trad('Tipo'), tipo), lComando, lArgs, lUrl, tituloValores, valores, masValor, lAgentes);
+  const guardar = el('button', 'boton prim', trad('Guardar'));
   guardar.addEventListener('click', () => enviar({
     tipo: 'mcpGuardar',
     servidor: {
@@ -1561,7 +1570,7 @@ function formMcp(s) {
       agentes: marcas.every((c) => c.checked) ? null : marcas.filter((c) => c.checked).map((c) => c.value),
     },
   }));
-  const cancelar = el('button', 'boton', 'Cancelar');
+  const cancelar = el('button', 'boton', trad('Cancelar'));
   cancelar.addEventListener('click', () => { f.hidden = true; });
   const pie = el('footer'); pie.append(el('span'), cancelar, guardar);
   f.append(campos, pie);
@@ -1575,6 +1584,7 @@ function alRecibir(m) {
     case 'estado': {
       const primero = !S.estado;
       S.estado = m;
+      traducirEstado(m);
       if (primero) {
         const ultima = leerLocal('ultimaSesion');
         if (ultima && todasLasSesiones().some((s) => s.id === ultima)) setTimeout(() => abrirSesion(ultima), 0);
@@ -1629,43 +1639,43 @@ function alRecibir(m) {
         const dl = $('cmModelos');
         if (dl) dl.replaceChildren(...m.modelos.map((x) => new Option(x.nombre && x.nombre !== x.id ? `${x.id} — ${x.nombre}` : x.id, x.id)));
         document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; });
-        aviso(`${m.modelos.length} modelos del proveedor. Escribe para filtrar.`);
+        aviso(trad('{0} modelos del proveedor. Escribe para filtrar.', m.modelos.length));
         break;
       }
       $('fcModelos').replaceChildren(...m.modelos.map((x) => new Option(x.nombre && x.nombre !== x.id ? `${x.id} — ${x.nombre}` : x.id, x.id)));
-      $('fcModelosInfo').textContent = `${m.modelos.length} modelos disponibles. Escribe para filtrar o elige uno de la lista.`;
+      $('fcModelosInfo').textContent = trad('{0} modelos disponibles. Escribe para filtrar o elige uno de la lista.', m.modelos.length);
       $('fcListar').disabled = false;
       $('fcModelo').focus();
       break;
     }
     case 'cuentaModeloGuardado':
-      aviso(m.texto + ' Las sesiones de esta cuenta siguen con él.');
+      aviso(traducir(m.texto) + trad(' Las sesiones de esta cuenta siguen con él.'));
       break;
     case 'modelosProbados': {
       const dl = $('cmModelos');
       if (dl) dl.replaceChildren(...m.funcionan.map((x) => new Option(x, x)));
-      document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; if (b.textContent === 'Probando modelos…') b.textContent = 'Probar cuáles funcionan'; });
+      document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; if (b.textContent === trad('Probando modelos…')) b.textContent = trad('Probar cuáles funcionan'); });
       const entrada = document.querySelector('.form-modelo input');
       if (entrada && m.funcionan.length && !m.funcionan.includes(entrada.value)) entrada.value = m.funcionan[0];
       aviso(m.funcionan.length
-        ? `Funcionan ${m.funcionan.length} de ${m.probados} modelos con tu cuenta: ${m.funcionan.join(', ')}. Elige uno y pulsa «Probar y guardar».`
-        : `Ninguno de los ${m.probados} modelos de chat responde con tu cuenta ahora mismo. Revisa la clave o prueba más tarde.`);
+        ? trad('Funcionan {0} de {1} modelos con tu cuenta: {2}. Elige uno y pulsa «Probar y guardar».', m.funcionan.length, m.probados, m.funcionan.join(', '))
+        : trad('Ninguno de los {0} modelos de chat responde con tu cuenta ahora mismo. Revisa la clave o prueba más tarde.', m.probados));
       break;
     }
     case 'cuentaCreada':
       $('fcAnadir').disabled = false;
-      $('fcAnadir').textContent = 'Añadir';
+      $('fcAnadir').textContent = trad('Añadir');
       $('fcAlias').value = '';
       delete $('fcAlias').dataset.tocado;
       $('fcClave').value = '';
       cambioTipo();
-      aviso('Cuenta añadida.' + (tipoElegido().clase === 'login' ? ' Pulsa «Autorizar…» para iniciar sesión.' : ''));
+      aviso(trad('Cuenta añadida.') + (tipoElegido().clase === 'login' ? trad(' Pulsa «Autorizar…» para iniciar sesión.') : ''));
       break;
     case 'estadisticas':
       pintarEstadisticas(m);
       break;
     case 'limitesGuardados':
-      aviso('Límites guardados.');
+      aviso(trad('Límites guardados.'));
       break;
     case 'extensiones':
       ext = m;
@@ -1673,30 +1683,30 @@ function alRecibir(m) {
       break;
     case 'mcpGuardado':
       $('mcpForm').hidden = true;
-      aviso('Servidor MCP guardado. Lo tendrán las sesiones que abras a partir de ahora.');
+      aviso(trad('Servidor MCP guardado. Lo tendrán las sesiones que abras a partir de ahora.'));
       break;
     case 'mcpImportables':
-      listaSeleccion($('mcpImportables'), 'Servidores MCP de tu configuración', m.servidores.map((s) => ({
+      listaSeleccion($('mcpImportables'), trad('Servidores MCP de tu configuración'), m.servidores.map((s) => ({
         valor: s.nombre, nombre: `${s.nombre} (${s.tipo})`,
         detalle: (s.tipo === 'stdio' ? [s.comando, ...(s.argumentos || [])].join(' ') : s.url) + ' · ' + s.origen,
-      })), 'Traer los marcados', (nombres) => enviar({ tipo: 'mcpImportar', nombres }));
+      })), trad('Traer los marcados'), (nombres) => enviar({ tipo: 'mcpImportar', nombres }));
       break;
     case 'extImportables':
-      listaSeleccion($('importables-' + m.clave), 'De tu configuración de siempre (se copian; los originales no se tocan)',
+      listaSeleccion($('importables-' + m.clave), trad('De tu configuración de siempre (se copian; los originales no se tocan)'),
         m.elementos.map((e) => ({ valor: e.ruta, nombre: e.nombre, detalle: [e.descripcion, e.ruta].filter(Boolean).join(' · ') })),
-        'Copiar los marcados', (rutas) => enviar({ tipo: 'extImportar', clave: m.clave, rutas }));
+        trad('Copiar los marcados'), (rutas) => enviar({ tipo: 'extImportar', clave: m.clave, rutas }));
       break;
     case 'instruccionesGuardadas':
       instrTocadas = false;
-      aviso('Instrucciones guardadas: ya están en todas tus cuentas.');
+      aviso(trad('Instrucciones guardadas: ya están en todas tus cuentas.'));
       break;
     case 'instruccionesUsuario': {
       const c = $('instrUsuario');
       c.hidden = false;
-      c.replaceChildren(el('h2', '', 'Tus instrucciones de siempre'));
-      if (!m.lista.length) c.append(el('p', '', 'No se ha encontrado ninguna (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md).'));
+      c.replaceChildren(el('h2', '', trad('Tus instrucciones de siempre')));
+      if (!m.lista.length) c.append(el('p', '', trad('No se ha encontrado ninguna (~/.claude/CLAUDE.md, ~/.codex/AGENTS.md, ~/.gemini/GEMINI.md).')));
       for (const i of m.lista) {
-        const b = el('button', 'boton fino', 'Añadir al final');
+        const b = el('button', 'boton fino', trad('Añadir al final'));
         b.addEventListener('click', () => {
           const t = $('instrTexto');
           t.value = (t.value.trim() ? t.value.trimEnd() + '\n\n' : '') + i.texto.trim() + '\n';
@@ -1705,7 +1715,7 @@ function alRecibir(m) {
         });
         c.append(filaExt(i.nombre, i.texto.slice(0, 160).replace(/\s+/g, ' ') + (i.texto.length > 160 ? '…' : ''), [b]));
       }
-      const cerrar = el('button', 'boton fino', 'Cerrar');
+      const cerrar = el('button', 'boton fino', trad('Cerrar'));
       cerrar.addEventListener('click', () => { c.hidden = true; });
       c.append(cerrar);
       break;
@@ -1713,7 +1723,7 @@ function alRecibir(m) {
     case 'proyectoGuardado': {
       $('dlgProyecto').close();
       const p = S.estado.proyectos.find((x) => x.id === m.id);
-      if (m.nuevo && p) { nuevaEnProyecto(p); aviso(`Proyecto «${p.nombre}» creado. Escribe para empezar su primera sesión.`); }
+      if (m.nuevo && p) { nuevaEnProyecto(p); aviso(trad('Proyecto «{0}» creado. Escribe para empezar su primera sesión.', p.nombre)); }
       break;
     }
     case 'cambios':
@@ -1727,9 +1737,9 @@ function alRecibir(m) {
     case 'historialesImportados': {
       $('dlgImportar').close();
       const n = m.importadas;
-      aviso(n ? `${n === 1 ? 'Conversación importada' : n + ' conversaciones importadas'}: están en el lateral, en el proyecto de su carpeta.` : 'No se ha importado ninguna conversación.');
-      for (const f of m.fallos.slice(0, 5)) aviso(f);
-      if (m.fallos.length > 5) aviso(`Y ${m.fallos.length - 5} más que no se han podido importar (detalle en datos\\logs).`);
+      aviso(n ? trad('{0}: están en el lateral, en el proyecto de su carpeta.', n === 1 ? trad('Conversación importada') : trad('{0} conversaciones importadas', n)) : trad('No se ha importado ninguna conversación.'));
+      for (const f of m.fallos.slice(0, 5)) aviso(traducir(f));
+      if (m.fallos.length > 5) aviso(trad('Y {0} más que no se han podido importar (detalle en datos\\\\logs).', m.fallos.length - 5));
       break;
     }
     case 'cambioFichero':
@@ -1737,17 +1747,17 @@ function alRecibir(m) {
       if (m.sesionId === S.actual) pintarPanel();
       break;
     case 'aviso':
-      if (m.origen === 'proyectoGuardar' && $('dlgProyecto').open) { $('dpError').textContent = m.texto; $('dpError').hidden = false; break; }
+      if (m.origen === 'proyectoGuardar' && $('dlgProyecto').open) { $('dpError').textContent = traducir(m.texto); $('dpError').hidden = false; break; }
       if (m.origen === 'consumoActualizar') $('btnConsumoActualizar').disabled = false;
       if (m.origen === 'historialesImportar' && $('dlgImportar').open) {
-        $('imError').textContent = m.texto; $('imError').hidden = false; pintarBotonImportar(); break;
+        $('imError').textContent = traducir(m.texto); $('imError').hidden = false; pintarBotonImportar(); break;
       }
-      aviso(m.texto);
+      aviso(traducir(m.texto));
       if (m.origen === 'sesionNueva') cajaNueva.enviarBtn.disabled = false;
       if (m.origen === 'modelos') { $('fcListar').disabled = false; document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; }); }
-      if (m.origen === 'cuentaModelo') document.querySelectorAll('.form-modelo .prim').forEach((b) => { b.disabled = false; b.textContent = 'Probar y guardar'; });
-      if (m.origen === 'modelosProbar') document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; if (b.textContent === 'Probando modelos…') b.textContent = 'Probar cuáles funcionan'; });
-      if (m.origen === 'cuentaNueva') { $('fcAnadir').disabled = false; $('fcAnadir').textContent = 'Añadir'; }
+      if (m.origen === 'cuentaModelo') document.querySelectorAll('.form-modelo .prim').forEach((b) => { b.disabled = false; b.textContent = trad('Probar y guardar'); });
+      if (m.origen === 'modelosProbar') document.querySelectorAll('.form-modelo button').forEach((b) => { b.disabled = false; if (b.textContent === trad('Probando modelos…')) b.textContent = trad('Probar cuáles funcionan'); });
+      if (m.origen === 'cuentaNueva') { $('fcAnadir').disabled = false; $('fcAnadir').textContent = trad('Añadir'); }
       break;
   }
 }
@@ -1802,12 +1812,12 @@ function nuevaEnProyecto(p) {
 
 function menuProyecto(p, donde) {
   menuFlotante(donde, [
-    { texto: 'Nueva sesión aquí', accion: () => nuevaEnProyecto(p) },
-    { texto: 'Cambiar nombre o carpeta…', accion: () => dialogoProyecto(p) },
-    { texto: 'Abrir la carpeta', accion: () => enviar({ tipo: 'abrirRuta', ruta: p.ruta }) },
+    { texto: trad('Nueva sesión aquí'), accion: () => nuevaEnProyecto(p) },
+    { texto: trad('Cambiar nombre o carpeta…'), accion: () => dialogoProyecto(p) },
+    { texto: trad('Abrir la carpeta'), accion: () => enviar({ tipo: 'abrirRuta', ruta: p.ruta }) },
     '-',
-    { texto: 'Quitar el proyecto…', peligro: true, accion: async () => {
-      if (await preguntar({ titulo: `¿Quitar el proyecto «${p.nombre}»?`, texto: 'Sus sesiones no se borran: pasan a «Sin proyecto». La carpeta no se toca.', aceptar: 'Quitar proyecto', peligro: true }))
+    { texto: trad('Quitar el proyecto…'), peligro: true, accion: async () => {
+      if (await preguntar({ titulo: trad('¿Quitar el proyecto «{0}»?', p.nombre), texto: trad('Sus sesiones no se borran: pasan a «Sin proyecto». La carpeta no se toca.'), aceptar: trad('Quitar proyecto'), peligro: true }))
         enviar({ tipo: 'proyectoBorrar', id: p.id });
     } },
   ]);
@@ -1818,20 +1828,20 @@ function menuSesion(s, donde) {
     texto: p.nombre, actual: s.proyectoId === p.id,
     accion: () => enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: p.id }),
   }));
-  destinos.push({ texto: 'Sin proyecto', actual: !s.proyectoId, accion: () => enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: null }) });
+  destinos.push({ texto: trad('Sin proyecto'), actual: !s.proyectoId, accion: () => enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: null }) });
   menuFlotante(donde, [
-    { texto: 'Cambiar el nombre…', accion: () => renombrarSesion(s) },
-    { texto: 'Abrir la carpeta', accion: () => enviar({ tipo: 'abrirRuta', ruta: s.carpeta }) },
+    { texto: trad('Cambiar el nombre…'), accion: () => renombrarSesion(s) },
+    { texto: trad('Abrir la carpeta'), accion: () => enviar({ tipo: 'abrirRuta', ruta: s.carpeta }) },
     '-',
-    { titulo: 'Mover a' },
+    { titulo: trad('Mover a') },
     ...destinos,
     '-',
-    { texto: 'Archivar…', peligro: true, accion: () => archivarSesion(s.id) },
+    { texto: trad('Archivar…'), peligro: true, accion: () => archivarSesion(s.id) },
   ]);
 }
 
 async function renombrarSesion(s) {
-  const r = await preguntar({ titulo: 'Nombre de la sesión', campos: [{ etiqueta: 'Nombre', valor: s.titulo }], aceptar: 'Guardar' });
+  const r = await preguntar({ titulo: trad('Nombre de la sesión'), campos: [{ etiqueta: trad('Nombre'), valor: s.titulo }], aceptar: trad('Guardar') });
   const t = r && r[0].trim();
   if (t && t !== s.titulo) enviar({ tipo: 'sesionRenombrar', sesionId: s.id, titulo: t });
 }
@@ -1841,16 +1851,16 @@ function archivarSesion(id) {
   const s = todasLasSesiones().find((x) => x.id === id);
   enviar({ tipo: 'archivar', sesionId: id });
   if (S.actual === id) mostrar('inicio');
-  aviso(`«${s ? s.titulo : 'Sesión'}» archivada.`, { texto: 'Deshacer', alPulsar: () => enviar({ tipo: 'desarchivar', sesionId: id }) });
+  aviso(trad('«{0}» archivada.', s ? s.titulo : trad('Sesión')), { texto: trad('Deshacer'), alPulsar: () => enviar({ tipo: 'desarchivar', sesionId: id }) });
 }
 
 let proyectoEditado = null;
 function dialogoProyecto(p) {
   proyectoEditado = p ? p.id : null;
-  $('dpTitulo').textContent = p ? `Proyecto «${p.nombre}»` : 'Nuevo proyecto';
+  $('dpTitulo').textContent = p ? trad('Proyecto «{0}»', p.nombre) : trad('Nuevo proyecto');
   $('dpNombre').value = p ? p.nombre : '';
   $('dpRuta').value = p ? p.ruta : '';
-  $('dpGuardar').textContent = p ? 'Guardar' : 'Crear';
+  $('dpGuardar').textContent = p ? 'Guardar' : trad('Crear');
   $('dpError').hidden = true;
   $('dlgProyecto').showModal();
   $('dpNombre').focus();
@@ -1859,7 +1869,7 @@ function dialogoProyecto(p) {
 function guardarProyecto() {
   const nombre = $('dpNombre').value.trim();
   const ruta = $('dpRuta').value.trim();
-  const error = !nombre ? 'Ponle un nombre al proyecto.' : !ruta ? 'Elige la carpeta de trabajo.' : null;
+  const error = !nombre ? trad('Ponle un nombre al proyecto.') : !ruta ? trad('Elige la carpeta de trabajo.') : null;
   $('dpError').hidden = !error;
   if (error) { $('dpError').textContent = error; return; }
   enviar({ tipo: 'proyectoGuardar', id: proyectoEditado, nombre, ruta });
@@ -1873,7 +1883,7 @@ function abrirImportar() {
   IM.lista = [];
   IM.marcadas = new Set();
   IM.cargando = true;
-  $('imLista').replaceChildren(el('div', 'pc-vacio', 'Buscando conversaciones en este PC…'));
+  $('imLista').replaceChildren(el('div', 'pc-vacio', trad('Buscando conversaciones en este PC…')));
   $('imError').hidden = true;
   pintarBotonImportar();
   $('dlgImportar').showModal();
@@ -1893,13 +1903,13 @@ function fechaCorta(iso) {
   const d = new Date(iso);
   if (isNaN(d)) return '';
   const otroAnio = d.getFullYear() !== new Date().getFullYear();
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: otroAnio ? 'numeric' : undefined }) + ' ' + hora(iso);
+  return d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: otroAnio ? 'numeric' : undefined }) + ' ' + hora(iso);
 }
 
 function pintarBotonImportar() {
   const n = IM.marcadas.size;
   $('imImportar').disabled = n === 0;
-  $('imImportar').textContent = n ? `Importar ${n}` : 'Importar';
+  $('imImportar').textContent = n ? `Importar ${n}` : trad('Importar');
 }
 
 function pintarImportar() {
@@ -1907,8 +1917,8 @@ function pintarImportar() {
   if (IM.cargando) return;
   l.replaceChildren();
   const vis = visiblesImportar();
-  if (!IM.lista.length) l.append(el('div', 'pc-vacio', 'No hay conversaciones de Claude Code, Codex ni Gemini en este PC.'));
-  else if (!vis.length) l.append(el('div', 'pc-vacio', 'Ninguna coincide con el filtro.'));
+  if (!IM.lista.length) l.append(el('div', 'pc-vacio', trad('No hay conversaciones de Claude Code, Codex ni Gemini en este PC.')));
+  else if (!vis.length) l.append(el('div', 'pc-vacio', trad('Ninguna coincide con el filtro.')));
   for (const h of vis) {
     const no = h.importada || !h.existe;
     const fila = el('label', 'imp-fila' + (no ? ' no' : ''));
@@ -1922,11 +1932,11 @@ function pintarImportar() {
     });
     const t = el('div', 'imp-t');
     const cab = el('div', 'imp-cab');
-    cab.append(el('span', 'punto p-' + h.origen), el('b', '', h.titulo || '(sin título)'));
-    if (h.importada) cab.append(el('span', 'imp-nota', 'ya importada'));
-    else if (!h.existe) cab.append(el('span', 'imp-nota', 'su carpeta ya no existe'));
-    const meta = el('div', 'imp-meta', [h.nombreOrigen, h.carpeta || 'carpeta desconocida', fechaCorta(h.fecha),
-      `${h.mensajes} ${h.mensajes === 1 ? 'mensaje' : 'mensajes'} tuyos`].join(' · '));
+    cab.append(el('span', 'punto p-' + h.origen), el('b', '', h.titulo || trad('(sin título)')));
+    if (h.importada) cab.append(el('span', 'imp-nota', trad('ya importada')));
+    else if (!h.existe) cab.append(el('span', 'imp-nota', trad('su carpeta ya no existe')));
+    const meta = el('div', 'imp-meta', [h.nombreOrigen, h.carpeta || trad('carpeta desconocida'), fechaCorta(h.fecha),
+      (h.mensajes === 1 ? trad('1 mensaje tuyo') : trad('{0} mensajes tuyos', h.mensajes))].join(' · '));
     meta.title = h.carpeta || '';
     t.append(cab, meta);
     fila.append(c, t);
@@ -1940,7 +1950,7 @@ function pintarImportar() {
 // datos: sesión → cambios de su carpeta (git); difs: «sesión|ruta» → diferencias de un fichero; abiertos: ficheros desplegados
 const PC = { abierto: leerLocal('panelCambios') === '1', modo: leerLocal('panelModo') || 'git', datos: {}, difs: new Map(), abiertos: new Set(), espera: null };
 
-const ESTADO_FICH = { M: ['M', 'cambiado'], A: ['A', 'añadido'], D: ['D', 'borrado'], '?': ['N', 'nuevo (git aún no lo sigue)'], T: ['T', 'cambio de tipo'] };
+const ESTADO_FICH = { M: ['M', trad('cambiado')], A: ['A', trad('añadido')], D: ['D', trad('borrado')], '?': ['N', trad('nuevo (git aún no lo sigue)')], T: ['T', trad('cambio de tipo')] };
 const LENGUAJES = {
   cs: 'csharp', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript',
   py: 'python', json: 'json', html: 'xml', htm: 'xml', xml: 'xml', csproj: 'xml', props: 'xml', xaml: 'xml', svg: 'xml',
@@ -2008,20 +2018,20 @@ function pintarPanel() {
   const arriba = cuerpo.scrollTop;
   cuerpo.replaceChildren();
   if (modo === 'git') {
-    if (!d) { $('pcInfo').textContent = ''; cuerpo.append(el('div', 'pc-vacio', 'Mirando los cambios…')); return; }
+    if (!d) { $('pcInfo').textContent = ''; cuerpo.append(el('div', 'pc-vacio', trad('Mirando los cambios…'))); return; }
     const mas = d.ficheros.reduce((a, f) => a + (f.mas || 0), 0);
     const menos = d.ficheros.reduce((a, f) => a + (f.menos || 0), 0);
     $('pcInfo').textContent = [d.rama && d.rama !== 'HEAD' ? d.rama : null, `${d.ficheros.length} ficheros`, d.ficheros.length ? `+${mas} −${menos}` : null].filter(Boolean).join(' · ');
     $('pcInfo').title = d.raiz ? `Repositorio: ${d.raiz}` : '';
-    if (!d.ficheros.length) cuerpo.append(el('div', 'pc-vacio', 'No hay cambios sin confirmar en la carpeta de la sesión.'));
+    if (!d.ficheros.length) cuerpo.append(el('div', 'pc-vacio', trad('No hay cambios sin confirmar en la carpeta de la sesión.')));
     for (const f of d.ficheros) cuerpo.append(filaCambio(f));
-    if (d.recortado) cuerpo.append(el('div', 'pc-vacio', 'Hay más ficheros cambiados: se muestran los primeros.'));
+    if (d.recortado) cuerpo.append(el('div', 'pc-vacio', trad('Hay más ficheros cambiados: se muestran los primeros.')));
   } else {
     const porFichero = edicionesDeSesion(S.actual);
-    $('pcInfo').textContent = `${porFichero.size} ficheros editados`;
+    $('pcInfo').textContent = trad('{0} ficheros editados', porFichero.size);
     $('pcInfo').title = '';
-    if (d && !d.git) cuerpo.append(el('div', 'pc-nota', 'La carpeta no está en un repositorio git: se ven las ediciones que han hecho los agentes en esta sesión.'));
-    if (!porFichero.size) cuerpo.append(el('div', 'pc-vacio', 'Los agentes aún no han editado ficheros en esta sesión.'));
+    if (d && !d.git) cuerpo.append(el('div', 'pc-nota', trad('La carpeta no está en un repositorio git: se ven las ediciones que han hecho los agentes en esta sesión.')));
+    if (!porFichero.size) cuerpo.append(el('div', 'pc-vacio', trad('Los agentes aún no han editado ficheros en esta sesión.')));
     for (const [ruta, items] of porFichero) cuerpo.append(filaEdiciones(ruta, items));
   }
   cuerpo.scrollTop = arriba;
@@ -2043,7 +2053,7 @@ function nombreRuta(ruta) {
 
 function cifras(mas, menos, binario) {
   const c = el('span', 'pc-cifras');
-  if (binario) c.append(el('span', 'tenue', 'binario'));
+  if (binario) c.append(el('span', 'tenue', trad('binario')));
   else c.append(el('span', 'mas', '+' + (mas || 0)), el('span', 'menos', '−' + (menos || 0)));
   return c;
 }
@@ -2075,15 +2085,15 @@ function filaCambio(f) {
   if (!PC.abiertos.has(clave)) return caja;
   const d = PC.difs.get(llave);
   const cuerpo = el('div', 'pc-dif');
-  if (!d) cuerpo.append(el('div', 'pc-vacio', 'Cargando…'));
-  else if (d.binario) cuerpo.append(el('div', 'pc-vacio', 'Fichero binario: no se pueden mostrar las diferencias.'));
-  else if (!d.texto) cuerpo.append(el('div', 'pc-vacio', 'Sin diferencias de texto.'));
+  if (!d) cuerpo.append(el('div', 'pc-vacio', trad('Cargando…')));
+  else if (d.binario) cuerpo.append(el('div', 'pc-vacio', trad('Fichero binario: no se pueden mostrar las diferencias.')));
+  else if (!d.texto) cuerpo.append(el('div', 'pc-vacio', trad('Sin diferencias de texto.')));
   else cuerpo.append(vistaUnificada(d.texto, f.ruta));
-  if (d && d.recortado) cuerpo.append(el('div', 'pc-vacio', 'Diferencias muy largas: se muestra el principio.'));
+  if (d && d.recortado) cuerpo.append(el('div', 'pc-vacio', trad('Diferencias muy largas: se muestra el principio.')));
   const s = sesionActual();
   if (s && f.estado !== 'D') {
     const pie = el('div', 'pc-pie');
-    pie.append(enlaceRuta(s.carpeta.replace(/[\\/]+$/, '') + '\\' + f.ruta, 'Abrir el fichero'));
+    pie.append(enlaceRuta(s.carpeta.replace(/[\\/]+$/, '') + '\\' + f.ruta, trad('Abrir el fichero')));
     cuerpo.append(pie);
   }
   caja.append(cuerpo);
@@ -2096,16 +2106,16 @@ function filaEdiciones(ruta, items) {
   let mas = 0, menos = 0;
   for (const it of items) { const c = contarEdicion(it); mas += c.mas; menos += c.menos; }
   const etiqueta = el('span', 'pc-est e-M', String(items.length));
-  etiqueta.title = items.length === 1 ? 'una edición' : `${items.length} ediciones`;
+  etiqueta.title = items.length === 1 ? trad('una edición') : `${items.length} ediciones`;
   caja.append(cabFichero(clave, rutaRelativa(ruta), etiqueta, mas, menos, false));
   if (!PC.abiertos.has(clave)) return caja;
   const cuerpo = el('div', 'pc-dif');
   items.forEach((it, i) => {
-    if (items.length > 1) cuerpo.append(el('div', 'pc-paso', `Edición ${i + 1}`));
+    if (items.length > 1) cuerpo.append(el('div', 'pc-paso', trad('Edición {0}', i + 1)));
     cuerpo.append(vistaUnificada(unificada(it.oldText || '', it.newText || ''), ruta, false));
   });
   const pie = el('div', 'pc-pie');
-  pie.append(enlaceRuta(ruta, 'Abrir el fichero'));
+  pie.append(enlaceRuta(ruta, trad('Abrir el fichero')));
   cuerpo.append(pie);
   caja.append(cuerpo);
   return caja;
@@ -2154,7 +2164,7 @@ function vistaUnificada(texto, ruta, numeros = true) {
     f.append(el('span', 'n', numeros ? na : ''), el('span', 'n', numeros ? nb : ''), el('span', 's', marca === ' ' ? '' : marca === '-' ? '−' : '+'), c);
     t.append(f);
   }
-  if (lineas.length > max) t.append(el('div', 'pc-vacio', `… ${lineas.length - max} líneas más`));
+  if (lineas.length > max) t.append(el('div', 'pc-vacio', trad('… {0} líneas más', lineas.length - max)));
   return t;
 }
 
@@ -2184,7 +2194,7 @@ function vistaUnificada(texto, ruta, numeros = true) {
 
 function nombreProveedor(c) {
   const p = S.estado.proveedores.find((x) => x.id === c.proveedor);
-  return (p ? p.nombre : c.proveedor) + (c.tipo === 'Api' ? ' · API' : ' · suscripción');
+  return (p ? p.nombre : c.proveedor) + (c.tipo === 'Api' ? trad(' · API') : trad(' · suscripción'));
 }
 
 function duracion(ms) {
@@ -2192,21 +2202,21 @@ function duracion(ms) {
   if (min < 60) return `${min} min`;
   const h = Math.floor(min / 60);
   if (h < 48) return `${h} h ${min % 60} min`;
-  return `${Math.round(h / 24)} días`;
+  return trad('{0} días', Math.round(h / 24));
 }
 
 function cuandoReinicia(iso, conDia) {
   const d = new Date(iso);
   const falta = d - Date.now();
-  if (isNaN(d) || falta <= 0) return 'en breve';
+  if (isNaN(d) || falta <= 0) return trad('en breve');
   const mismoDia = d.toDateString() === new Date().toDateString();
-  const dia = conDia && !mismoDia ? d.toLocaleDateString('es-ES', { weekday: 'long' }) + ' ' : '';
-  return `${dia}a las ${hora(iso)} (en ${duracion(falta)})`;
+  const dia = conDia && !mismoDia ? d.toLocaleDateString(LOCALE, { weekday: 'long' }) + ' ' : '';
+  return trad('{0}a las {1} (en {2})', dia, hora(iso), duracion(falta));
 }
 
 function haceCuanto(iso) {
   const min = Math.round((Date.now() - new Date(iso)) / 60000);
-  return min < 1 ? 'ahora mismo' : min < 60 ? `hace ${min} min` : `a las ${hora(iso)}`;
+  return min < 1 ? 'ahora mismo' : min < 60 ? `hace ${min} min` : trad('a las {0}', hora(iso));
 }
 
 function barraConsumo(nombre, pct, umbral, nota, notaDer, aviso = umbral - 15) {
@@ -2231,46 +2241,46 @@ function barraConsumo(nombre, pct, umbral, nota, notaDer, aviso = umbral - 15) {
 function filaMes(c) {
   const pres = c.limites && c.limites.presupuesto;
   const gasto = c.gastoMes;
-  const fin = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+  const fin = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
   if (pres) {
-    const f = barraConsumo('Este mes', 100 * (gasto || 0) / pres, 100, `${dinero(gasto || 0, c.moneda)} de ${dinero(pres, c.moneda)} · aviso al 80 %`, `empieza de cero el ${fin}`, 80);
+    const f = barraConsumo(trad('Este mes'), 100 * (gasto || 0) / pres, 100, trad('{0} de {1} · aviso al 80 %', dinero(gasto || 0, c.moneda), dinero(pres, c.moneda)), trad('empieza de cero el {0}', fin), 80);
     return f;
   }
   const f = el('div', 'cs-fila');
   const cab = el('div', 'cs-tit');
-  cab.append(el('span', '', 'Este mes'), el('b', '', gasto != null ? dinero(gasto, c.moneda) : '—'));
-  f.append(cab, el('div', 'cs-sub', gasto != null ? 'Sin presupuesto: pon uno en «Límites…» para que avise y pase a otra cuenta al agotarlo.'
-    : c.tipo === 'Login' ? 'Suscripción: el agente no informa de coste.' : 'El agente aún no ha informado de coste.'));
+  cab.append(el('span', '', trad('Este mes')), el('b', '', gasto != null ? dinero(gasto, c.moneda) : '—'));
+  f.append(cab, el('div', 'cs-sub', gasto != null ? trad('Sin presupuesto: pon uno en «Límites…» para que avise y pase a otra cuenta al agotarlo.')
+    : c.tipo === 'Login' ? trad('Suscripción: el agente no informa de coste.') : trad('El agente aún no ha informado de coste.')));
   return f;
 }
 
 function notaSinConsumo(c) {
-  if (!c.listo) return 'Falta instalar su agente.';
-  if (!c.autorizada) return 'Autoriza la cuenta para ver su consumo.';
-  if (c.proveedor === 'Claude' && c.tipo === 'Login') return 'Aún no se ha podido leer su consumo. Pulsa «Actualizar ahora».';
-  if (c.tipo === 'Api') return 'Cuenta de API: no tiene bloques de 5 horas ni semanales; se paga por uso.';
-  return `${(S.estado.proveedores.find((x) => x.id === c.proveedor) || {}).nombre || c.proveedor} no le da a MultiAgente el % de sus límites. Si llega al tope, el equipo pasa a otra cuenta al recibir el aviso de límite.`;
+  if (!c.listo) return trad('Falta instalar su agente.');
+  if (!c.autorizada) return trad('Autoriza la cuenta para ver su consumo.');
+  if (c.proveedor === 'Claude' && c.tipo === 'Login') return trad('Aún no se ha podido leer su consumo. Pulsa «Actualizar ahora».');
+  if (c.tipo === 'Api') return trad('Cuenta de API: no tiene bloques de 5 horas ni semanales; se paga por uso.');
+  return trad('{0} no le da a MultiAgente el % de sus límites. Si llega al tope, el equipo pasa a otra cuenta al recibir el aviso de límite.', (S.estado.proveedores.find((x) => x.id === c.proveedor) || {}).nombre || c.proveedor);
 }
 
 function tarjetaConsumo(c) {
   const t = el('div', 'tarjeta consumo');
   const u = c.consumo || {};
   const cab = el('div', 'cs-cab');
-  const [clase, estado] = !c.listo ? ['falta', 'falta instalar'] : !c.autorizada ? ['falta', 'falta autorizar']
-    : u.enfriandoHasta ? ['falta', `agotada · vuelve a las ${hora(u.enfriandoHasta)}`]
-    : c.sinMargen ? ['falta', 'sin margen'] : ['ok', 'con margen'];
+  const [clase, estado] = !c.listo ? ['falta', trad('falta instalar')] : !c.autorizada ? ['falta', trad('falta autorizar')]
+    : u.enfriandoHasta ? ['falta', trad('agotada · vuelve a las {0}', hora(u.enfriandoHasta))]
+    : c.sinMargen ? ['falta', trad('sin margen')] : ['ok', trad('con margen')];
   cab.append(el('span', 'punto ' + claseProveedor(c)), el('b', '', c.alias), el('span', 'tenue', c.catalogoNombre || nombreProveedor(c)),
              el('span', 'cs-estado ' + clase, estado));
   t.append(cab);
-  if (u.enfriandoHasta && u.motivo) t.append(el('div', 'cs-nota', enCastellano(u.motivo)));
+  if (u.enfriandoHasta && u.motivo) t.append(el('div', 'cs-nota', legible(u.motivo)));
   const lim = c.limites || {};
-  if (u.pct5h != null) t.append(barraConsumo('Bloque de 5 horas', u.pct5h, lim.umbral5h, u.reinicio5h ? `Se reinicia ${cuandoReinicia(u.reinicio5h)}` : '', `cambia de cuenta al ${lim.umbral5h} %`));
-  if (u.pctSemana != null) t.append(barraConsumo('Semanal', u.pctSemana, lim.umbralSemana, u.reinicioSemana ? `Se reinicia ${cuandoReinicia(u.reinicioSemana, true)}` : '', `cambia de cuenta al ${lim.umbralSemana} %`));
+  if (u.pct5h != null) t.append(barraConsumo(trad('Bloque de 5 horas'), u.pct5h, lim.umbral5h, u.reinicio5h ? trad('Se reinicia {0}', cuandoReinicia(u.reinicio5h)) : '', trad('cambia de cuenta al {0} %', lim.umbral5h)));
+  if (u.pctSemana != null) t.append(barraConsumo(trad('Semanal'), u.pctSemana, lim.umbralSemana, u.reinicioSemana ? trad('Se reinicia {0}', cuandoReinicia(u.reinicioSemana, true)) : '', trad('cambia de cuenta al {0} %', lim.umbralSemana)));
   if (u.pct5h == null && u.pctSemana == null) t.append(el('div', 'cs-nota', notaSinConsumo(c)));
   t.append(filaMes(c));
   const pie = el('div', 'cs-pie');
-  pie.append(el('span', 'tenue', u.momento ? `Consumo leído ${haceCuanto(u.momento)}` : ''));
-  const b = el('button', 'boton fino', 'Límites…');
+  pie.append(el('span', 'tenue', u.momento ? trad('Consumo leído {0}', haceCuanto(u.momento)) : ''));
+  const b = el('button', 'boton fino', trad('Límites…'));
   b.addEventListener('click', () => mostrar('cuentas'));
   pie.append(b);
   t.append(pie);
@@ -2281,7 +2291,7 @@ function pintarConsumo() {
   if (S.vista !== 'consumo' || !S.estado) return;
   const lista = $('consumoCuentas');
   lista.replaceChildren();
-  if (!S.estado.cuentas.length) lista.append(el('div', 'lista-vacia', 'Añade una cuenta para ver su consumo.'));
+  if (!S.estado.cuentas.length) lista.append(el('div', 'lista-vacia', trad('Añade una cuenta para ver su consumo.')));
   for (const c of S.estado.cuentas) lista.append(tarjetaConsumo(c));
 }
 setInterval(pintarConsumo, 30000);
@@ -2309,9 +2319,9 @@ $('sesCuenta').addEventListener('change', async (e) => {
   const quien = e.target.value;
   const [clase, id] = quien.split(':');
   const texto = clase === 'equipo'
-    ? `¿Pasar la sesión a «Automático · ${(S.estado.equipos.find((x) => x.id === id) || {}).nombre}»? El equipo elegirá la cuenta y la relevará cuando se agote.`
-    : `¿Seguir esta sesión con «${(S.estado.cuentas.find((x) => x.id === id) || {}).alias}» fija? La conversación continúa; si es de otro proveedor, se le pasa un resumen de lo hecho.`;
-  if (await preguntar({ titulo: 'Cambiar la cuenta de la sesión', texto, aceptar: 'Cambiar' })) enviar({ tipo: 'cambiarCuenta', sesionId: s.id, quien });
+    ? trad('¿Pasar la sesión a «Automático · {0}»? El equipo elegirá la cuenta y la relevará cuando se agote.', (S.estado.equipos.find((x) => x.id === id) || {}).nombre)
+    : trad('¿Seguir esta sesión con «{0}» fija? La conversación continúa; si es de otro proveedor, se le pasa un resumen de lo hecho.', (S.estado.cuentas.find((x) => x.id === id) || {}).alias);
+  if (await preguntar({ titulo: trad('Cambiar la cuenta de la sesión'), texto, aceptar: trad('Cambiar') })) enviar({ tipo: 'cambiarCuenta', sesionId: s.id, quien });
   else pintarCabecera();
 });
 $('btnArchivar').addEventListener('click', () => { if (S.actual) archivarSesion(S.actual); });
@@ -2332,8 +2342,8 @@ $('pcModo').addEventListener('click', (e) => {
   pintarPanel();
 });
 $('btnProyectoNuevo').addEventListener('click', (e) => menuFlotante(e.currentTarget, [
-  { texto: 'Nuevo proyecto…', accion: () => dialogoProyecto(null) },
-  { texto: 'Importar conversaciones de este PC…', accion: abrirImportar },
+  { texto: trad('Nuevo proyecto…'), accion: () => dialogoProyecto(null) },
+  { texto: trad('Importar conversaciones de este PC…'), accion: abrirImportar },
 ]));
 $('imBuscar').addEventListener('input', pintarImportar);
 $('imOrigen').addEventListener('change', pintarImportar);
@@ -2346,7 +2356,7 @@ $('imCerrar').addEventListener('click', () => $('dlgImportar').close());
 $('imImportar').addEventListener('click', () => {
   if (!IM.marcadas.size) return;
   $('imImportar').disabled = true;
-  $('imImportar').textContent = 'Importando…';
+  $('imImportar').textContent = trad('Importando…');
   $('imError').hidden = true;
   enviar({ tipo: 'historialesImportar', claves: [...IM.marcadas] });
 });
@@ -2364,12 +2374,12 @@ $('fcListar').addEventListener('click', () => {
   const { cat } = tipoElegido();
   if (!cat) return;
   $('fcListar').disabled = true;
-  $('fcModelosInfo').textContent = 'Pidiendo la lista al proveedor…';
+  $('fcModelosInfo').textContent = trad('Pidiendo la lista al proveedor…');
   enviar({ tipo: 'modelos', para: 'form', catalogo: cat.id, endpoint: $('fcEndpoint').value, clave: $('fcClave').value });
 });
 $('fcAnadir').addEventListener('click', anadirCuenta);
 $('btnNuevoEquipo').addEventListener('click', () => {
-  borradorEquipo = { id: null, nombre: 'Equipo ' + (S.estado.equipos.length + 1), regla: 'Prioridad', permiteOtroProveedor: true,
+  borradorEquipo = { id: null, nombre: trad('Equipo ') + (S.estado.equipos.length + 1), regla: 'Prioridad', permiteOtroProveedor: true,
                      cuentaAtras: 60, predeterminado: false, miembros: [] };
   pintarEquipos();
 });
@@ -2385,9 +2395,9 @@ $('periodo').addEventListener('click', (e) => {
 $('btnMcpNuevo').addEventListener('click', () => formMcp(null));
 $('btnMcpImportar').addEventListener('click', () => enviar({ tipo: 'mcpImportables' }));
 $('btnSkillNueva').addEventListener('click', async () => {
-  const r = await preguntar({ titulo: 'Skill nueva', aceptar: 'Crear', campos: [
-    { etiqueta: 'Nombre', ayuda: 'p. ej. revisar-codigo' },
-    { etiqueta: '¿Cuándo debe usarla el agente?', ayuda: 'Una frase' }] });
+  const r = await preguntar({ titulo: trad('Skill nueva'), aceptar: trad('Crear'), campos: [
+    { etiqueta: trad('Nombre'), ayuda: trad('p. ej. revisar-codigo') },
+    { etiqueta: trad('¿Cuándo debe usarla el agente?'), ayuda: trad('Una frase') }] });
   if (!r || !r[0].trim()) return;
   enviar({ tipo: 'skillNueva', nombre: r[0].trim(), descripcion: r[1].trim() });
 });
@@ -2408,6 +2418,12 @@ document.addEventListener('keydown', (e) => {
 });
 window.addEventListener('focus', () => { enviar({ tipo: 'recomprobar' }); if (S.vista === 'sesion') pedirCambiosLuego(); });
 if (puente) puente.addEventListener('message', (e) => alRecibir(e.data));
+
+// Idioma de la interfaz: se guarda en este equipo y se aplica recargando la página
+for (const [cod, nombre] of Object.entries(IDIOMAS)) {
+  const o = new Option(nombre, cod, false, cod === IDIOMA); o.lang = cod; $('selIdioma').append(o);
+}
+$('selIdioma').addEventListener('change', (e) => { guardarLocal('idioma', e.target.value); location.reload(); });
 
 document.body.classList.toggle('veterano', (Number(leerLocal('enviados')) || 0) >= 3);
 mostrar('inicio');
