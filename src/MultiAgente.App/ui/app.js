@@ -34,10 +34,71 @@ function leerLocal(k) { try { return localStorage.getItem(k); } catch { return n
 
 // ------------------------------------------------------------------ avisos
 
-function aviso(texto) {
+function aviso(texto, accion) {
   const d = el('div', '', texto);
+  if (accion) {
+    const b = el('button', 'enlace', accion.texto);
+    b.addEventListener('click', (e) => { e.stopPropagation(); d.remove(); accion.alPulsar(); });
+    d.append(' ', b);
+  }
+  d.title = 'Clic para cerrar';
+  d.addEventListener('click', () => d.remove());
   $('avisos').append(d);
-  setTimeout(() => d.remove(), Math.min(12000, 4000 + texto.length * 40));
+  setTimeout(() => d.remove(), Math.min(20000, (accion ? 8000 : 4500) + texto.length * 50));
+}
+
+// Diálogo propio (en vez de las ventanas del sistema): confirmar o pedir uno o varios datos. Devuelve una promesa con
+// true (confirmado), la lista de valores escritos, o null si se cancela.
+function preguntar({ titulo, texto, campos = [], aceptar = 'Aceptar', peligro = false }) {
+  return new Promise((resolver) => {
+    const d = $('dlgPedir');
+    $('dqTitulo').textContent = titulo;
+    $('dqTexto').textContent = texto || '';
+    $('dqTexto').hidden = !texto;
+    const c = $('dqCampos');
+    c.replaceChildren();
+    c.hidden = campos.length === 0;
+    const entradas = campos.map((f) => {
+      const l = el('label', '', f.etiqueta);
+      const i = el('input');
+      i.type = f.tipo || 'text';
+      i.value = f.valor || '';
+      i.placeholder = f.ayuda || '';
+      i.spellcheck = false;
+      i.autocomplete = 'off';
+      if (f.tipo === 'password') {
+        const fila = el('span', 'fila-campo');
+        const ver = botonIcono('ojo', 'Ver u ocultar', 'boton fino solo-icono');
+        ver.type = 'button';
+        ver.addEventListener('click', () => { i.type = i.type === 'password' ? 'text' : 'password'; });
+        fila.append(i, ver);
+        l.append(fila);
+      } else l.append(i);
+      c.append(l);
+      return i;
+    });
+    const ok = $('dqAceptar');
+    ok.textContent = aceptar;
+    ok.classList.toggle('peligro-prim', peligro);
+    const fin = (valor) => { d.close(); resolver(valor); };
+    ok.onclick = () => fin(campos.length ? entradas.map((i) => i.value) : true);
+    $('dqCancelar').onclick = () => fin(null);
+    d.oncancel = (e) => { e.preventDefault(); fin(null); };
+    entradas.forEach((i) => { i.onkeydown = (e) => { if (e.key === 'Enter') ok.click(); }; });
+    d.showModal();
+    (entradas[0] || (peligro ? $('dqCancelar') : ok)).focus();
+  });
+}
+
+// Mensajes que los agentes dan en inglés y ya conocemos
+function enCastellano(texto) {
+  if (!texto) return texto;
+  let t = texto;
+  const reinicio = /resets?\s+(?:at\s+)?([0-9: ]+(?:am|pm)?)/i.exec(t);
+  if (/(you(?:'ve| have) hit your (?:usage )?limit|usage limit reached|rate limit reached)/i.test(t))
+    return 'Límite de uso alcanzado' + (reinicio ? ` · se reinicia a las ${reinicio[1].trim()}` : '');
+  t = t.replace(/^Internal error:\s*/i, '');
+  return t;
 }
 
 // ------------------------------------------------------------------ markdown
@@ -59,7 +120,7 @@ function md(texto) {
 // ------------------------------------------------------------------ textos
 
 const NOMBRES = {
-  default: 'Pedir permiso', acceptEdits: 'Aceptar ediciones', plan: 'Planificar', auto: 'Automático',
+  default: 'Pedir permiso', acceptEdits: 'Aceptar ediciones', plan: 'Planificar', auto: 'Decide el agente',
   bypassPermissions: 'Sin preguntar', dontAsk: 'Sin preguntar',
   low: 'Esfuerzo bajo', medium: 'Esfuerzo medio', high: 'Esfuerzo alto', xhigh: 'Esfuerzo muy alto', max: 'Esfuerzo máximo',
 };
@@ -121,6 +182,18 @@ function textoUso(c) {
   return { texto: partes.join(' · '), agotada: false };
 }
 
+// Monograma de dos letras para el logotipo de cada cuenta (Claude y Codex, o GLM y Gemini, ya no comparten letra)
+const SIGLAS = {
+  Claude: 'Cl', Codex: 'Cx', Gemini: 'Gm', anthropic: 'An', zai: 'GL', zhipu: 'GL', deepseek: 'DS', moonshot: 'Ki', kimi: 'Ki',
+  minimax: 'MM', 'minimax-cn': 'MM', qwen: 'Qw', openrouter: 'OR', deepinfra: 'DI', fireworks: 'FW', vercel: 'Ve', ollama: 'Ol',
+  lmstudio: 'LM', litellm: 'LL', nvidia: 'NV', groq: 'Gq', cerebras: 'Cb', mistral: 'Mi', together: 'To', 'openai-compatible': 'OA',
+  xai: 'xA', azure: 'Az',
+};
+function monograma(c) {
+  const cat = (c.catalogo || '').replace(/^codex-/, '');
+  return SIGLAS[cat] || SIGLAS[c.proveedor] || (c.alias || '?').slice(0, 2);
+}
+
 function claseProveedor(c) {
   if (!c) return 'p-comun';
   if (c.catalogo && c.catalogo !== 'anthropic') return 'p-api';
@@ -170,7 +243,7 @@ function abrirSesion(id) {
 
 function todasLasSesiones() {
   if (!S.estado) return [];
-  return [...S.estado.proyectos.flatMap((p) => p.sesiones.map((s) => ({ ...s, proyectoId: p.id }))), ...S.estado.sueltas];
+  return [...S.estado.proyectos.flatMap((p) => p.sesiones.map((s) => ({ ...s, proyectoId: p.id }))), ...S.estado.sueltas, ...(S.estado.archivadas || []).map((s) => ({ ...s, archivada: true }))];
 }
 
 function estadoDe(s) {
@@ -180,29 +253,43 @@ function estadoDe(s) {
 
 let arrastrando = null;          // sesión que se está arrastrando a otro proyecto
 
-function botonSesion(s) {
+const ESTADO_FILA = { PidePermiso: 'pide permiso', Error: 'con error', Trabajando: 'trabajando', Arrancando: 'arrancando', Esperando: 'esperándote' };
+
+function marcaEstado(estado) {
+  if (estado === 'PidePermiso') return icono('atencion', 'est-i atencion');
+  if (estado === 'Error') return icono('error', 'est-i error');
+  return el('i', 'est ' + estado);
+}
+
+function botonSesion(s, opciones = {}) {
+  const fila = el('div', 'ses-fila');
   const b = el('button', 'ses' + (s.id === S.actual ? ' activa' : ''));
+  const estado = estadoDe(s);
   b.title = s.carpeta;
-  b.draggable = true;
-  b.append(el('i', 'est ' + estadoDe(s)), el('span', 't', s.titulo));
+  b.setAttribute('aria-label', [s.titulo, ESTADO_FILA[estado], s.cuenta].filter(Boolean).join(', '));
+  if (s.id === S.actual) b.setAttribute('aria-current', 'page');
+  b.append(marcaEstado(estado), el('span', 't', s.titulo));
   const cuenta = S.estado.cuentas.find((c) => c.alias === s.cuenta);
   const p = el('span', 'punto ' + claseProveedor(cuenta));
   p.title = s.cuenta || '';
-  const mas = el('span', 'mas-ses');
-  mas.append(icono('puntos'));
-  mas.title = 'Opciones de la sesión';
-  mas.addEventListener('click', (e) => { e.stopPropagation(); menuSesion(s, mas); });
-  b.append(p, mas);
+  b.append(p);
   b.addEventListener('click', () => abrirSesion(s.id));
   b.addEventListener('contextmenu', (e) => { e.preventDefault(); menuSesion(s, e); });
-  b.addEventListener('dragstart', (e) => {
-    arrastrando = s.id;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', s.titulo);
-    $('arbol').classList.add('moviendo');
-  });
-  b.addEventListener('dragend', () => { arrastrando = null; $('arbol').classList.remove('moviendo'); });
-  return b;
+  const mas = botonIcono('puntos', `Opciones de «${s.titulo}»`, 'mas-ses');
+  mas.setAttribute('aria-haspopup', 'menu');
+  mas.addEventListener('click', (e) => { e.stopPropagation(); menuSesion(s, mas); });
+  if (!opciones.archivada) {
+    fila.draggable = true;
+    fila.addEventListener('dragstart', (e) => {
+      arrastrando = s.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', s.titulo);
+      $('arbol').classList.add('moviendo');
+    });
+    fila.addEventListener('dragend', () => { arrastrando = null; $('arbol').classList.remove('moviendo'); });
+  }
+  fila.append(b, mas);
+  return fila;
 }
 
 function plegados() {
@@ -214,6 +301,12 @@ function grupoProyecto(p, sesiones, pleg) {
   const plegado = pleg.has(clave);
   const t = el('div', 'proyecto' + (plegado ? '' : ' abierto'));
   t.title = p ? p.ruta : 'Sesiones que no están en ningún proyecto';
+  t.tabIndex = 0;
+  t.setAttribute('role', 'button');
+  t.setAttribute('aria-expanded', String(!plegado));
+  t.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target === t) { e.preventDefault(); t.click(); }
+  });
   const flecha = el('span', 'flecha');
   flecha.append(icono('chevron'));
   t.append(flecha, el('span', 'n', p ? p.nombre : 'Sin proyecto'));
@@ -228,7 +321,8 @@ function grupoProyecto(p, sesiones, pleg) {
     t.append(acc);
     t.addEventListener('contextmenu', (e) => { e.preventDefault(); menuProyecto(p, e); });
   }
-  t.addEventListener('click', () => {
+  t.addEventListener('click', (e) => {
+    if (e.target.closest('.acc')) return;
     const ahora = plegados();
     if (ahora.has(clave)) ahora.delete(clave); else ahora.add(clave);
     guardarLocal('plegados', JSON.stringify([...ahora]));
@@ -260,8 +354,39 @@ function pintarArbol() {
   if (!S.estado.proyectos.length && !S.estado.sueltas.length)
     a.append(el('div', 'vacio', 'Aún no hay sesiones. Empieza una sesión nueva, crea un proyecto o importa tus conversaciones con ＋.'));
   const pleg = plegados();
+  const urgentes = todasLasSesiones().filter((x) => ['PidePermiso', 'Error'].includes(estadoDe(x)));
+  if (urgentes.length) {
+    const g = el('div', 'grupo-urgente');
+    g.append(el('div', 'titulo-urgente', urgentes.length === 1 ? 'Te necesita' : `Te necesitan (${urgentes.length})`), ...urgentes.map((x) => botonSesion(x)));
+    a.append(g);
+  }
   for (const p of S.estado.proyectos) a.append(...grupoProyecto(p, p.sesiones, pleg));
   if (S.estado.sueltas.length) a.append(...grupoProyecto(null, S.estado.sueltas, pleg));
+  const archivadas = S.estado.archivadas || [];
+  if (archivadas.length) {
+    const abierta = !pleg.has('archivadas');
+    const t = el('button', 'proyecto archivadas-cab' + (abierta ? ' abierto' : ''));
+    t.setAttribute('aria-expanded', String(abierta));
+    const flecha = el('span', 'flecha');
+    flecha.append(icono('chevron'));
+    t.append(flecha, el('span', 'n', 'Archivadas'), el('span', 'cuantas', String(archivadas.length)));
+    t.addEventListener('click', () => {
+      const ahora = plegados();
+      if (ahora.has('archivadas')) ahora.delete('archivadas'); else ahora.add('archivadas');
+      guardarLocal('plegados', JSON.stringify([...ahora]));
+      pintarArbol();
+    });
+    a.append(t);
+    if (abierta)
+      for (const x of archivadas) {
+        const f = botonSesion(x, { archivada: true });
+        f.classList.add('archivada');
+        const r = botonIcono('restaurar', `Restaurar «${x.titulo}»`, 'mas-ses restaurar');
+        r.addEventListener('click', (e) => { e.stopPropagation(); enviar({ tipo: 'desarchivar', sesionId: x.id }); aviso(`«${x.titulo}» vuelve a su proyecto.`); });
+        f.querySelector('.mas-ses').replaceWith(r);
+        a.append(f);
+      }
+  }
 
   const l = $('cuentasLat');
   l.replaceChildren();
@@ -416,26 +541,19 @@ function pintarAgente() {
   // Permiso pendiente
   const p = ag && ag.permiso;
   c.permiso.hidden = !p;
-  if (p) {
-    const d = el('div');
-    const t = el('div', 'pt');
-    t.append(el('b', '', 'El agente pide permiso: '), document.createTextNode(p.titulo));
-    const ops = el('div', 'ops');
-    for (const o of p.opciones) {
-      const b = el('button', 'boton' + (String(o.kind || '').startsWith('allow') ? ' prim' : ''), o.name);
-      b.addEventListener('click', () => enviar({ tipo: 'permiso', sesionId: S.actual, peticion: p.id, opcion: o.optionId }));
-      ops.append(b);
-    }
-    d.append(t, ops);
-    c.permiso.replaceChildren(d);
-  }
+  if (p && c.permiso.dataset.id !== p.id) {
+    c.permiso.dataset.id = p.id;
+    c.permiso.replaceChildren(tarjetaPermiso(p, ag));
+    if (!c.ta.value.trim()) setTimeout(() => { const b = c.permiso.querySelector('.boton.prim'); if (b) b.focus(); }, 0);
+  } else if (!p) delete c.permiso.dataset.id;
 
   // Cola
   const cola = (ag && ag.cola) || [];
   c.cola.hidden = cola.length === 0;
   if (cola.length) {
     const d = el('div');
-    d.append(el('div', '', 'En cola (lo leerá al terminar lo que está haciendo):'), ...cola.map((t) => el('div', '', '· ' + t)));
+    d.title = cola.join('\n\n');
+    d.append(el('b', '', cola.length === 1 ? 'En cola' : `${cola.length} en cola`), el('span', '', ` · se enviará al terminar: ${cola[0]}`));
     c.cola.replaceChildren(d);
   }
 
@@ -447,6 +565,7 @@ function pintarAgente() {
   for (const o of opciones) {
     const sel = el('select', 'chip');
     sel.title = o.description || o.name || '';
+    sel.setAttribute('aria-label', o.name || o.category || 'Opción');
     for (const v of o.options) {
       const op = new Option(nombreOpcion(o, v.value), v.value);
       op.title = v.description || '';
@@ -466,6 +585,56 @@ function pintarAgente() {
   pintarTrabajando();
 }
 
+const ORDEN_PERMISO = { allow_once: 0, allow_always: 1, reject_once: 2, reject_always: 3 };
+const NOMBRE_PERMISO = { allow_once: 'Permitir', allow_always: 'Permitir siempre', reject_once: 'Rechazar', reject_always: 'Rechazar siempre' };
+
+// Lo que se va a aprobar: las diferencias o la orden, a la vista (la herramienta puede estar plegada más arriba)
+function detallePermiso(p) {
+  const s = S.sesiones[S.actual];
+  const id = p.herramienta && p.herramienta.toolCallId;
+  const e = (s && id && s.entradas.get(id)) || {};
+  const contenido = (p.herramienta && p.herramienta.content) || e.contenido || [];
+  const datos = (p.herramienta && p.herramienta.rawInput) || e.datos || {};
+  const caja = el('div', 'permiso-det');
+  for (const item of contenido)
+    if (item && item.type === 'diff') {
+      caja.append(el('div', 'pd-ruta', rutaRelativa(item.path || '')));
+      caja.append(vistaUnificada(unificada(item.oldText || '', item.newText || ''), item.path || '', false));
+    }
+  const orden = datos.command || datos.cmd;
+  if (orden) caja.append(el('pre', '', [].concat(orden).join(' ')));
+  return caja.childNodes.length ? caja : null;
+}
+
+function tarjetaPermiso(p, ag) {
+  const d = el('div');
+  d.setAttribute('role', 'alertdialog');
+  d.setAttribute('aria-label', 'Petición de permiso');
+  const t = el('div', 'pt');
+  t.append(icono(ICONOS[p.clase] || 'herramienta'), el('b', '', `${ag && ag.cuenta ? ag.cuenta.alias : 'El agente'} pide permiso: `), document.createTextNode(p.titulo));
+  d.append(t);
+  const det = detallePermiso(p);
+  if (det) d.append(det);
+  const ops = el('div', 'ops');
+  let rechazar = null;
+  const opciones = [...p.opciones].sort((a, b) => (ORDEN_PERMISO[a.kind] ?? 9) - (ORDEN_PERMISO[b.kind] ?? 9));
+  for (const o of opciones) {
+    const tipo = String(o.kind || '');
+    const b = el('button', 'boton' + (tipo === 'allow_once' ? ' prim' : tipo.startsWith('reject') ? ' fantasma' : ''), NOMBRE_PERMISO[tipo] || o.name);
+    b.title = tipo === 'allow_always' ? `No volverá a preguntar por esta herramienta mientras dure la sesión del agente (${o.name})` : o.name;
+    b.addEventListener('click', () => enviar({ tipo: 'permiso', sesionId: S.actual, peticion: p.id, opcion: o.optionId }));
+    if (tipo === 'reject_once' || (!rechazar && tipo.startsWith('reject'))) rechazar = b;
+    ops.append(b);
+  }
+  if (!ops.querySelector('.prim') && ops.firstChild) ops.firstChild.classList.add('prim');
+  ops.append(el('span', 'atajos', rechazar ? 'Intro permite · Esc rechaza' : 'Intro permite'));
+  d.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && rechazar) { e.preventDefault(); e.stopPropagation(); rechazar.click(); }
+  });
+  d.append(ops);
+  return d;
+}
+
 function pintarRelevo() {
   const c = cajaSesion;
   const r = S.actual && S.relevos[S.actual];
@@ -478,12 +647,14 @@ function pintarRelevo() {
     d.append(el('span', '', `${r.motivo}, y ninguna cuenta del equipo tiene margen ahora. La sesión sigue con «${r.de}».`), b);
   } else {
     const t = el('span');
-    t.append(icono('modo'), document.createTextNode(` ${r.motivo} → sigue en «${r.a}» `));
+    t.title = r.motivo;
     const reloj = el('span', 'reloj', r.segundos > 0 ? `en ${r.segundos} s` : 'ahora');
-    t.append(reloj, document.createTextNode(r.esperaTurno ? ', al terminar el turno' : ''));
-    const ya = el('button', 'boton fino prim', 'Cambiar ya');
+    reloj.setAttribute('aria-hidden', 'true');
+    t.append(icono('modo'), document.createTextNode(` Sigue en «${r.a}» `), reloj,
+             document.createTextNode(r.esperaTurno ? ' al terminar el turno' : ''), el('span', 'motivo', ` · ${r.motivo}`));
+    const ya = el('button', 'boton fino', 'Cambiar ya');
     ya.addEventListener('click', () => enviar({ tipo: 'relevoYa', sesionId: S.actual }));
-    const no = el('button', 'boton fino', 'Cancelar');
+    const no = el('button', 'boton fino fantasma', 'Cancelar');
     no.addEventListener('click', () => enviar({ tipo: 'relevoCancelar', sesionId: S.actual }));
     d.append(t, ya, no);
   }
@@ -684,13 +855,15 @@ function nodoEntrada(e) {
       break;
     }
     case 'aviso':
-      n = el('div', 'aviso ' + (e.nivel || ''), e.texto);
+      n = el('div', 'aviso ' + (e.nivel || ''), enCastellano(e.texto));
       break;
     case 'relevo': {
       n = el('div', 'relevo-linea');
       const t = el('span');
+      t.title = e.texto || '';
       const cuenta = S.estado && S.estado.cuentas.find((c) => c.alias === e.cuenta);
-      t.append(el('span', 'punto ' + claseProveedor(cuenta)), document.createTextNode(' ' + e.texto));
+      t.append(icono('modo'), document.createTextNode(e.nivel ? ` «${e.nivel}» → ` : ' Sigue en '), el('span', 'punto ' + claseProveedor(cuenta)),
+               document.createTextNode(` «${e.cuenta}»`));
       n.append(t);
       break;
     }
@@ -763,6 +936,9 @@ function enviarDesde(c) {
     return; // el texto se limpia cuando la sesión se abre
   }
   enviar({ tipo: 'enviar', sesionId: S.actual, texto, adjuntos });
+  const n = (Number(leerLocal('enviados')) || 0) + 1;
+  guardarLocal('enviados', String(n));
+  document.body.classList.toggle('veterano', n >= 3);
   limpiarCaja(c, texto);
 }
 
@@ -973,7 +1149,8 @@ function pintarCuentas() {
   l.hidden = S.estado.cuentas.length === 0;
   for (const c of S.estado.cuentas) {
     const f = el('div', 'cuenta');
-    const logo = el('span', 'logo ' + claseProveedor(c), (c.catalogoNombre || c.proveedor).charAt(0).toUpperCase());
+    const logo = el('span', 'logo ' + claseProveedor(c), monograma(c));
+    logo.setAttribute('aria-hidden', 'true');
     const n = el('span', 'n', c.alias);
     const detalle = c.catalogoNombre ? `${c.catalogoNombre} · con ${c.proveedor === 'Claude' ? 'Claude Code' : c.proveedor}` : c.proveedor + (c.tipo === 'Api' ? ' · clave de API' : ' · suscripción');
     n.append(el('small', '', detalle + (c.modelo ? ' · ' + c.modelo : '')));
@@ -988,9 +1165,10 @@ function pintarCuentas() {
       acc.append(b);
     } else {
       const b = el('button', 'boton fino', 'Cambiar clave');
-      b.addEventListener('click', () => {
-        const clave = window.prompt(`Clave de API nueva para «${c.alias}»:`);
-        if (clave) enviar({ tipo: 'cuentaClave', id: c.id, clave });
+      b.addEventListener('click', async () => {
+        const r = await preguntar({ titulo: `Clave nueva para «${c.alias}»`, texto: 'Se guarda cifrada en la carpeta de MultiAgente; la anterior se sustituye.',
+                                    campos: [{ etiqueta: 'Clave de API', tipo: 'password' }], aceptar: 'Guardar clave' });
+        if (r && r[0].trim()) enviar({ tipo: 'cuentaClave', id: c.id, clave: r[0].trim() });
       });
       acc.append(b);
     }
@@ -1010,9 +1188,11 @@ function pintarCuentas() {
       f.append(formLimites(c));
     });
     acc.append(limites);
-    const quitar = el('button', 'boton fino peligro', 'Quitar');
-    quitar.addEventListener('click', () => {
-      if (window.confirm(`¿Quitar la cuenta «${c.alias}»? Se borran su carpeta (con su inicio de sesión) y su clave. Las conversaciones se conservan.`))
+    const quitar = el('button', 'boton fino peligro', 'Eliminar…');
+    quitar.title = 'Eliminar la cuenta';
+    quitar.addEventListener('click', async () => {
+      if (await preguntar({ titulo: `¿Eliminar la cuenta «${c.alias}»?`, peligro: true, aceptar: 'Eliminar cuenta',
+                            texto: 'Se borran su carpeta, con su inicio de sesión, y su clave. Las conversaciones se conservan y pueden seguir con otra cuenta.' }))
         enviar({ tipo: 'cuentaQuitar', id: c.id });
     });
     acc.append(quitar);
@@ -1059,7 +1239,9 @@ function pintarEstadisticas(m) {
   };
   const fila = (izq, d) => {
     const f = el('div', 'fila-est');
-    f.append(izq, el('span', 'num', numero(d.turnos)), el('span', 'num', numero(d.tokens)), el('span', 'num', d.coste != null ? dinero(d.coste, d.moneda) : '—'));
+    const coste = el('span', 'num', d.coste != null ? dinero(d.coste, d.moneda) : '—');
+    if (d.coste == null) coste.title = 'El agente no informa del coste (lo normal en las cuentas de suscripción)';
+    f.append(izq, el('span', 'num', numero(d.turnos)), el('span', 'num', numero(d.tokens)), coste);
     return f;
   };
   const lc = $('estCuentas');
@@ -1113,10 +1295,11 @@ function tarjetaEquipo(eq) {
   const t = el('div', 'equipo');
   const cab = el('div', 'cab-eq');
   const nombre = el('input');
-  nombre.type = 'text'; nombre.value = eq.nombre; nombre.maxLength = 40;
+  nombre.type = 'text'; nombre.value = eq.nombre; nombre.maxLength = 40; nombre.setAttribute('aria-label', 'Nombre del equipo');
   const regla = el('select');
   for (const [v, txt] of Object.entries(REGLAS)) regla.append(new Option(txt, v));
   regla.value = eq.regla;
+  regla.setAttribute('aria-label', 'Cómo reparte');
   const otro = el('input'); otro.type = 'checkbox'; otro.checked = eq.permiteOtroProveedor;
   const lOtro = el('label'); lOtro.append(otro, document.createTextNode(' pasar a otro proveedor'));
   const atras = el('input'); atras.type = 'number'; atras.min = 0; atras.max = 600; atras.value = eq.cuentaAtras;
@@ -1126,12 +1309,13 @@ function tarjetaEquipo(eq) {
   der.append(guardar);
   if (!eq.predeterminado) {
     const quitar = el('button', 'boton fino peligro', eq.id ? 'Quitar' : 'Descartar');
-    quitar.addEventListener('click', () => {
+    quitar.addEventListener('click', async () => {
       if (!eq.id) { borradorEquipo = null; pintarEquipos(); return; }
-      if (window.confirm(`¿Quitar el equipo «${eq.nombre}»? Sus sesiones pasan al equipo predeterminado.`)) enviar({ tipo: 'equipoBorrar', id: eq.id });
+      if (await preguntar({ titulo: `¿Quitar el equipo «${eq.nombre}»?`, texto: 'Sus sesiones pasan al equipo predeterminado. Las cuentas no se tocan.', aceptar: 'Quitar equipo', peligro: true }))
+        enviar({ tipo: 'equipoBorrar', id: eq.id });
     });
     der.append(quitar);
-  } else der.prepend(el('span', 'tenue', 'predeterminado '));
+  } else der.prepend(el('span', 'tenue', 'Predeterminado: lo usa «Automático» si no eliges otro '));
   cab.append(nombre, regla, lOtro, lAtras, der);
 
   // Miembros: los del equipo en su orden y, debajo, las demás cuentas (fuera)
@@ -1144,7 +1328,7 @@ function tarjetaEquipo(eq) {
       const c = S.estado.cuentas.find((x) => x.id === id);
       const dentro = orden.includes(id);
       const f = el('div', 'miembro' + (dentro ? '' : ' fuera'));
-      const chk = el('input'); chk.type = 'checkbox'; chk.checked = dentro;
+      const chk = el('input'); chk.type = 'checkbox'; chk.checked = dentro; chk.setAttribute('aria-label', `«${c.alias}» en el equipo`);
       chk.addEventListener('change', () => { orden = chk.checked ? [...orden, id] : orden.filter((x) => x !== id); pintarMiembros(); });
       f.append(el('span', 'num', dentro ? String(orden.indexOf(id) + 1) : ''), chk, el('span', 'punto ' + claseProveedor(c)), el('span', 'a', c.alias));
       const uso = textoUso(c);
@@ -1194,6 +1378,7 @@ function interruptor(activo, alCambiar, titulo) {
   const l = el('label', 'interr');
   l.title = titulo || '';
   const i = el('input'); i.type = 'checkbox'; i.checked = activo;
+  i.setAttribute('aria-label', titulo || 'Activo');
   i.addEventListener('change', () => alCambiar(i.checked));
   l.append(i, el('span'));
   return l;
@@ -1211,8 +1396,9 @@ function filaExt(nombre, detalle, acciones, opciones = {}) {
 
 function botonQuitar(ruta, que) {
   const b = el('button', 'boton fino peligro', 'Quitar');
-  b.addEventListener('click', () => {
-    if (window.confirm(`¿Quitar ${que}? Se mueve a la papelera de MultiAgente (datos\\papelera).`)) enviar({ tipo: 'extQuitar', ruta });
+  b.addEventListener('click', async () => {
+    if (await preguntar({ titulo: `¿Quitar ${que}?`, texto: 'Se mueve a la papelera de MultiAgente (datos\\papelera): se puede recuperar a mano.', aceptar: 'Quitar', peligro: true }))
+      enviar({ tipo: 'extQuitar', ruta });
   });
   return b;
 }
@@ -1238,8 +1424,11 @@ function pintarExtensiones() {
     const editar = el('button', 'boton fino', 'Editar');
     editar.addEventListener('click', () => formMcp(s));
     const quitar = el('button', 'boton fino peligro', 'Quitar');
-    quitar.addEventListener('click', () => { if (window.confirm(`¿Quitar el servidor MCP «${s.nombre}» y sus claves?`)) enviar({ tipo: 'mcpBorrar', id: s.id }); });
-    lm.append(filaExt(s.nombre, detalle, [interruptor(s.activo, (v) => enviar({ tipo: 'mcpActivar', id: s.id, activo: v }), 'Activo'), editar, quitar], { inactivo: !s.activo }));
+    quitar.addEventListener('click', async () => {
+      if (await preguntar({ titulo: `¿Quitar el servidor MCP «${s.nombre}»?`, texto: 'Se borran también sus claves guardadas.', aceptar: 'Quitar', peligro: true }))
+        enviar({ tipo: 'mcpBorrar', id: s.id });
+    });
+    lm.append(filaExt(s.nombre, detalle, [interruptor(s.activo, (v) => enviar({ tipo: 'mcpActivar', id: s.id, activo: v }), `Activar «${s.nombre}»`), editar, quitar], { inactivo: !s.activo }));
   }
   // Skills
   const ls = $('listaSkills');
@@ -1267,7 +1456,7 @@ function pintarExtensiones() {
   if (!ext.plugins.length) lp.append(el('div', 'lista-vacia', 'Ningún plugin instalado todavía.'));
   for (const p of ext.plugins)
     lp.append(filaExt(p.nombre, [p.tienda ? `de ${p.tienda}` : null, p.version ? 'versión ' + p.version : null].filter(Boolean).join(' · '),
-      [interruptor(p.activo, (v) => enviar({ tipo: 'pluginActivar', id: p.id, activo: v }), 'Activo')], { inactivo: !p.activo }));
+      [interruptor(p.activo, (v) => enviar({ tipo: 'pluginActivar', id: p.id, activo: v }), `Activar «${p.nombre}»`)], { inactivo: !p.activo }));
   // Instrucciones
   if (!instrTocadas) $('instrTexto').value = ext.instrucciones || '';
 }
@@ -1617,8 +1806,8 @@ function menuProyecto(p, donde) {
     { texto: 'Cambiar nombre o carpeta…', accion: () => dialogoProyecto(p) },
     { texto: 'Abrir la carpeta', accion: () => enviar({ tipo: 'abrirRuta', ruta: p.ruta }) },
     '-',
-    { texto: 'Quitar el proyecto…', peligro: true, accion: () => {
-      if (window.confirm(`¿Quitar el proyecto «${p.nombre}»? Sus sesiones no se borran: pasan a «Sin proyecto». La carpeta no se toca.`))
+    { texto: 'Quitar el proyecto…', peligro: true, accion: async () => {
+      if (await preguntar({ titulo: `¿Quitar el proyecto «${p.nombre}»?`, texto: 'Sus sesiones no se borran: pasan a «Sin proyecto». La carpeta no se toca.', aceptar: 'Quitar proyecto', peligro: true }))
         enviar({ tipo: 'proyectoBorrar', id: p.id });
     } },
   ]);
@@ -1641,15 +1830,18 @@ function menuSesion(s, donde) {
   ]);
 }
 
-function renombrarSesion(s) {
-  const t = window.prompt('Nombre de la sesión:', s.titulo);
-  if (t && t.trim() && t.trim() !== s.titulo) enviar({ tipo: 'sesionRenombrar', sesionId: s.id, titulo: t.trim() });
+async function renombrarSesion(s) {
+  const r = await preguntar({ titulo: 'Nombre de la sesión', campos: [{ etiqueta: 'Nombre', valor: s.titulo }], aceptar: 'Guardar' });
+  const t = r && r[0].trim();
+  if (t && t !== s.titulo) enviar({ tipo: 'sesionRenombrar', sesionId: s.id, titulo: t });
 }
 
+// Archivar no pregunta: se puede deshacer (aviso con «Deshacer» y la sección «Archivadas» del lateral)
 function archivarSesion(id) {
-  if (!window.confirm('¿Archivar esta sesión? Se cierra su agente y deja de verse en la lista (la conversación se conserva).')) return;
+  const s = todasLasSesiones().find((x) => x.id === id);
   enviar({ tipo: 'archivar', sesionId: id });
   if (S.actual === id) mostrar('inicio');
+  aviso(`«${s ? s.titulo : 'Sesión'}» archivada.`, { texto: 'Deshacer', alPulsar: () => enviar({ tipo: 'desarchivar', sesionId: id }) });
 }
 
 let proyectoEditado = null;
@@ -2070,7 +2262,7 @@ function tarjetaConsumo(c) {
   cab.append(el('span', 'punto ' + claseProveedor(c)), el('b', '', c.alias), el('span', 'tenue', c.catalogoNombre || nombreProveedor(c)),
              el('span', 'cs-estado ' + clase, estado));
   t.append(cab);
-  if (u.enfriandoHasta && u.motivo) t.append(el('div', 'cs-nota', u.motivo));
+  if (u.enfriandoHasta && u.motivo) t.append(el('div', 'cs-nota', enCastellano(u.motivo)));
   const lim = c.limites || {};
   if (u.pct5h != null) t.append(barraConsumo('Bloque de 5 horas', u.pct5h, lim.umbral5h, u.reinicio5h ? `Se reinicia ${cuandoReinicia(u.reinicio5h)}` : '', `cambia de cuenta al ${lim.umbral5h} %`));
   if (u.pctSemana != null) t.append(barraConsumo('Semanal', u.pctSemana, lim.umbralSemana, u.reinicioSemana ? `Se reinicia ${cuandoReinicia(u.reinicioSemana, true)}` : '', `cambia de cuenta al ${lim.umbralSemana} %`));
@@ -2111,7 +2303,7 @@ $('btnIrCuentas').addEventListener('click', () => mostrar('cuentas'));
 $('btnRecomprobar').addEventListener('click', () => enviar({ tipo: 'recomprobar' }));
 $('btnInstalar').addEventListener('click', () => enviar({ tipo: 'instalarRequisitos' }));
 $('sesCarpeta').addEventListener('click', () => { const s = sesionActual(); if (s) enviar({ tipo: 'abrirRuta', ruta: s.carpeta }); });
-$('sesCuenta').addEventListener('change', (e) => {
+$('sesCuenta').addEventListener('change', async (e) => {
   const s = sesionActual();
   if (!s) return;
   const quien = e.target.value;
@@ -2119,7 +2311,7 @@ $('sesCuenta').addEventListener('change', (e) => {
   const texto = clase === 'equipo'
     ? `¿Pasar la sesión a «Automático · ${(S.estado.equipos.find((x) => x.id === id) || {}).nombre}»? El equipo elegirá la cuenta y la relevará cuando se agote.`
     : `¿Seguir esta sesión con «${(S.estado.cuentas.find((x) => x.id === id) || {}).alias}» fija? La conversación continúa; si es de otro proveedor, se le pasa un resumen de lo hecho.`;
-  if (window.confirm(texto)) enviar({ tipo: 'cambiarCuenta', sesionId: s.id, quien });
+  if (await preguntar({ titulo: 'Cambiar la cuenta de la sesión', texto, aceptar: 'Cambiar' })) enviar({ tipo: 'cambiarCuenta', sesionId: s.id, quien });
   else pintarCabecera();
 });
 $('btnArchivar').addEventListener('click', () => { if (S.actual) archivarSesion(S.actual); });
@@ -2192,11 +2384,12 @@ $('periodo').addEventListener('click', (e) => {
 });
 $('btnMcpNuevo').addEventListener('click', () => formMcp(null));
 $('btnMcpImportar').addEventListener('click', () => enviar({ tipo: 'mcpImportables' }));
-$('btnSkillNueva').addEventListener('click', () => {
-  const nombre = window.prompt('Nombre de la skill nueva (p. ej. revisar-codigo):');
-  if (!nombre) return;
-  const descripcion = window.prompt('¿Cuándo debe usarla el agente? (una frase)') || '';
-  enviar({ tipo: 'skillNueva', nombre, descripcion });
+$('btnSkillNueva').addEventListener('click', async () => {
+  const r = await preguntar({ titulo: 'Skill nueva', aceptar: 'Crear', campos: [
+    { etiqueta: 'Nombre', ayuda: 'p. ej. revisar-codigo' },
+    { etiqueta: '¿Cuándo debe usarla el agente?', ayuda: 'Una frase' }] });
+  if (!r || !r[0].trim()) return;
+  enviar({ tipo: 'skillNueva', nombre: r[0].trim(), descripcion: r[1].trim() });
 });
 $('vExtensiones').addEventListener('click', (e) => {
   const b = e.target.closest('button');
@@ -2216,5 +2409,6 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('focus', () => { enviar({ tipo: 'recomprobar' }); if (S.vista === 'sesion') pedirCambiosLuego(); });
 if (puente) puente.addEventListener('message', (e) => alRecibir(e.data));
 
+document.body.classList.toggle('veterano', (Number(leerLocal('enviados')) || 0) >= 3);
 mostrar('inicio');
 enviar({ tipo: 'listo' });

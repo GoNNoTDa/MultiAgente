@@ -72,8 +72,9 @@
       { id: 'e1', nombre: 'Principal', regla: 'Prioridad', permiteOtroProveedor: true, cuentaAtras: 60, predeterminado: true, miembros: ['c1', 'c5', 'c2', 'c4'] },
       { id: 'e2', nombre: 'Solo Claude', regla: 'MenosUsada', permiteOtroProveedor: false, cuentaAtras: 30, predeterminado: false, miembros: ['c1', 'c5'] },
     ],
-    proyectos: proyectos.map((p) => ({ ...p, sesiones: sesiones.filter((x) => x.proyectoId === p.id) })),
-    sueltas: sesiones.filter((x) => !proyectos.some((p) => p.id === x.proyectoId)),
+    proyectos: proyectos.map((p) => ({ ...p, sesiones: sesiones.filter((x) => !x.archivada && x.proyectoId === p.id) })),
+    sueltas: sesiones.filter((x) => !x.archivada && !proyectos.some((p) => p.id === x.proyectoId)),
+    archivadas: sesiones.filter((x) => x.archivada),
   });
   const opciones = [
     { id: 'mode', category: 'mode', currentValue: 'default', options: ['default', 'acceptEdits', 'plan', 'auto', 'bypassPermissions'].map((v) => ({ value: v, name: v })) },
@@ -196,6 +197,8 @@
       case 'cambioFichero':
         setTimeout(() => emitir({ tipo: 'cambioFichero', sesionId: m.sesionId, ruta: m.ruta, texto: m.ruta.endsWith('.png') ? '' : DIF, binario: m.ruta.endsWith('.png'), recortado: false }), 150);
         break;
+      case 'archivar': sesiones.find((x) => x.id === m.sesionId).archivada = true; emitir(estado()); break;
+      case 'desarchivar': sesiones.find((x) => x.id === m.sesionId).archivada = false; emitir(estado()); break;
       case 'sesionMover': sesiones.find((x) => x.id === m.sesionId).proyectoId = m.proyectoId; emitir(estado()); break;
       case 'sesionRenombrar': sesiones.find((x) => x.id === m.sesionId).titulo = m.titulo; emitir(estado()); break;
       case 'proyectoGuardar': {

@@ -38,6 +38,10 @@
     <symbol id="i-modo" viewBox="0 0 24 24"><path d="M4 8h12.5"/><path d="m13.5 4.5 3.5 3.5-3.5 3.5"/><path d="M20 16H7.5"/><path d="M10.5 12.5 7 16l3.5 3.5"/></symbol>
     <symbol id="i-hecho" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.2 2.3 2.3 4.7-4.8"/></symbol>
     <symbol id="i-encurso" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-ojo" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-atencion" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5"/><circle cx="12" cy="16.3" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-error" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/></symbol>
+    <symbol id="i-restaurar" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65"/><path d="M4 4.5v4h4"/></symbol>
     <symbol id="i-pendiente" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></symbol>
   </defs></svg>
   <aside>
@@ -198,7 +202,7 @@
             <label>Nombre de la cuenta <input id="fcAlias" maxlength="40" placeholder="p. ej. Claude trabajo, GLM, DeepSeek"></label>
             <label id="fcClaveL">Clave de API
               <span class="fila-campo"><input id="fcClave" type="password" autocomplete="off" spellcheck="false">
-              <button class="boton fino" id="fcVerClave" type="button" title="Ver u ocultar">👁</button></span>
+              <button class="boton fino solo-icono" id="fcVerClave" type="button" title="Ver u ocultar la clave" aria-label="Ver u ocultar la clave"><svg class="i" aria-hidden="true"><use href="#i-ojo"/></svg></button></span>
               <button class="enlace" id="fcDondeClave" type="button"></button>
             </label>
             <label id="fcEndpointL">Dirección de la API <input id="fcEndpoint" spellcheck="false"></label>
@@ -251,8 +255,8 @@
       originales no se tocan) y las sigues con tus cuentas: con una del mismo proveedor se retoman tal cual; con otra, el agente
       recibe la conversación.</p>
     <div class="imp-filtros">
-      <input id="imBuscar" type="search" placeholder="Buscar por título o carpeta…" spellcheck="false">
-      <select id="imOrigen"><option value="">Todas</option><option value="Claude">Claude Code</option><option value="Codex">Codex</option><option value="Gemini">Gemini CLI</option></select>
+      <input id="imBuscar" type="search" placeholder="Buscar por título o carpeta…" aria-label="Buscar conversaciones" spellcheck="false">
+      <select id="imOrigen" aria-label="Agente"><option value="">Todas</option><option value="Claude">Claude Code</option><option value="Codex">Codex</option><option value="Gemini">Gemini CLI</option></select>
       <label class="casilla"><input type="checkbox" id="imOcultar" checked> Ocultar las ya importadas</label>
     </div>
     <div class="imp-lista" id="imLista"></div>
@@ -265,26 +269,33 @@
     </footer>
   </dialog>
 
+  <dialog class="dialogo" id="dlgPedir" aria-labelledby="dqTitulo">
+    <h2 id="dqTitulo"></h2>
+    <p class="ayuda" id="dqTexto"></p>
+    <div class="campos" id="dqCampos"></div>
+    <footer><button class="boton" id="dqCancelar" type="button">Cancelar</button><button class="boton prim" id="dqAceptar" type="button">Aceptar</button></footer>
+  </dialog>
+
   <div class="menu-flot" id="menuFlot" role="menu" hidden></div>
 
   <div class="soltar" id="soltar" hidden><b>Suelta para adjuntar</b><span>Se enviarán con tu mensaje</span></div>
   <div class="avisos" id="avisos" aria-live="polite"></div>
 
   <template id="tCaja">
-    <div class="banda relevo" hidden></div>
-    <div class="banda" hidden></div>
     <div class="permiso" hidden></div>
+    <div class="banda" hidden role="alert"></div>
+    <div class="banda relevo" hidden role="status"></div>
     <div class="cola" hidden></div>
     <div class="caja">
       <div class="campos-nueva" hidden>
         <button class="chip elige carpeta" title="Carpeta de trabajo"><svg class="i" aria-hidden="true"><use href="#i-carpeta"/></svg><span>Elegir carpeta…</span></button>
-        <select class="chip elige proyectos" title="Proyectos recientes"></select>
-        <label class="chip elige">Quién <select class="cuenta-nueva"></select></label>
+        <select class="chip elige proyectos" title="Proyectos" aria-label="Proyecto"></select>
+        <label class="chip elige">Cuenta <select class="cuenta-nueva" aria-label="Cuenta que trabaja"></select></label>
       </div>
       <div class="dentro">
         <div class="pend" hidden></div>
         <div class="ordenes" hidden></div>
-        <textarea rows="1" placeholder="Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  / para órdenes"></textarea>
+        <textarea rows="1" aria-label="Mensaje para el agente" placeholder="Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  / para órdenes"></textarea>
         <div class="fila">
           <button class="mas-btn" title="Adjuntar ficheros" aria-label="Adjuntar ficheros"><svg class="i" aria-hidden="true"><use href="#i-mas"/></svg></button>
           <span class="opciones"></span>

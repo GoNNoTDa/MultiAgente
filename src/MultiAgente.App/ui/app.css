@@ -1,18 +1,21 @@
 :root{
-  --ventana:#fbfaf8; --lateral:#f1efea; --tarjeta:#ffffff; --linea:#e3dfd7; --linea2:#d5d0c6;
-  --texto:#1f1d1a; --suave:#5d5850; --tenue:#77716a; --tinta:#2a2724; --sobre-tinta:#fbfaf8;
+  /* Neutros de «centralita»: gris piedra, sin el marfil de ningún proveedor */
+  --ventana:#f8f8f7; --lateral:#efefed; --tarjeta:#ffffff; --linea:#e2e2df; --linea2:#d2d2ce;
+  --texto:#1b1b1a; --suave:#505050; --tenue:#686866; --tinta:#232323; --sobre-tinta:#f8f8f7;
+  /* Proveedores: solo identifican cuentas */
   --claude:#c96442; --codex:#10a37f; --gemini:#3b7ded; --api:#8b5cf6;
-  --ambar:#b7791f; --ambar-fondo:#fdf4e3; --ambar-borde:#f0d9a8;
-  --verde:#2f855a; --rojo:#c2410c; --rojo-fondo:#fdeee6; --azul:#2b6cb0; --sel:#e8e4dc; --burbuja:#ece8e0;
+  /* Estados: ámbar = te necesita; rojo = error; verde = listo; azul = información */
+  --ambar:#82530b; --ambar-fondo:#fbf3e3; --ambar-borde:#ead3a2;
+  --verde:#24704a; --rojo:#b2390a; --rojo-fondo:#fcebe4; --azul:#2a62a6; --sel:#e5e5e2; --burbuja:#ebebe9;
   --sombra:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.08);
   --mono:"Cascadia Mono",Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --ventana:#1e1d1b; --lateral:#191816; --tarjeta:#262421; --linea:#33302c; --linea2:#45413b;
-    --texto:#ece9e3; --suave:#aea89e; --tenue:#948e84; --tinta:#ece9e3; --sobre-tinta:#1e1d1b;
-    --ambar:#e0a54a; --ambar-fondo:#2e2516; --ambar-borde:#5a4520; --verde:#5fb98a; --rojo:#f08a5d; --rojo-fondo:#3a2219;
-    --sel:#2c2a26; --burbuja:#2c2a26; --sombra:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
+    --ventana:#1b1b1c; --lateral:#161617; --tarjeta:#232325; --linea:#313133; --linea2:#444447;
+    --texto:#ececec; --suave:#b2b2b4; --tenue:#929296; --tinta:#ececec; --sobre-tinta:#1b1b1c;
+    --ambar:#e0a54a; --ambar-fondo:#2d2516; --ambar-borde:#5a4520; --verde:#5fb98a; --rojo:#f08a5d; --rojo-fondo:#3a2219;
+    --azul:#7aaef5; --sel:#2c2c2f; --burbuja:#2a2a2c; --sombra:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
   }
 }
 *{box-sizing:border-box}
@@ -416,12 +419,12 @@ body.redimensionando{cursor:col-resize;user-select:none}
 .agentes-mcp .casilla{display:flex;gap:6px;align-items:center;margin:0}
 
 /* ---------- Pulido: iconos propios, superficies del navegador, controles y movimiento */
-:root{--foco:color-mix(in srgb,var(--azul) 60%,transparent);--curva:cubic-bezier(.2,.8,.2,1)}
+:root{--foco:color-mix(in srgb,var(--texto) 60%,transparent);--curva:cubic-bezier(.2,.8,.2,1)}
 .sprite{position:absolute;width:0;height:0;overflow:hidden}
 .i{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
 
-::selection{background:color-mix(in srgb,var(--azul) 24%,transparent)}
-textarea,input{caret-color:var(--claude)}
+::selection{background:color-mix(in srgb,var(--texto) 16%,transparent)}
+textarea,input{caret-color:var(--texto)}
 :focus-visible{outline:2px solid var(--foco);outline-offset:2px}
 :root{scrollbar-color:var(--linea2) transparent}
 *{scrollbar-width:thin}
@@ -470,7 +473,7 @@ button,.chip,.ses,.proyecto,.pc-cab,.imp-fila,.cta,.mas-ses{transition:backgroun
 .enviar,.parar{display:inline-flex;align-items:center;justify-content:center;transition:background-color .15s var(--curva),transform .1s var(--curva),opacity .15s}
 .enviar .i{width:17px;height:17px;stroke-width:2.2}
 .parar .i{width:16px;height:16px}
-.enviar:hover:not(:disabled){background:color-mix(in srgb,var(--tinta) 82%,var(--claude))}
+.enviar:hover:not(:disabled){background:color-mix(in srgb,var(--tinta) 84%,var(--sobre-tinta))}
 .enviar:active:not(:disabled),.parar:active{transform:scale(.94)}
 .caja .dentro{transition:border-color .15s var(--curva),box-shadow .2s var(--curva)}
 .caja .dentro:focus-within{border-color:color-mix(in srgb,var(--suave) 70%,var(--linea2));box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.06)}
@@ -517,6 +520,72 @@ details.herr summary:hover .tt{color:var(--texto)}
 .sube,.baja{display:inline-flex;align-items:center;justify-content:center}
 
 /* El botón principal conserva su color al pasar por encima (antes perdía el contraste) */
-.boton.prim:hover:not(:disabled){background:color-mix(in srgb,var(--tinta) 84%,var(--claude));color:var(--sobre-tinta)}
+.boton.prim:hover:not(:disabled){background:color-mix(in srgb,var(--tinta) 84%,var(--sobre-tinta));color:var(--sobre-tinta)}
 .seg button{padding:4px 11px}
 .pie{font-size:12px}
+
+/* ---------- Lateral: fila de sesión (botón + menú, los dos con teclado) y estados con forma */
+.ses-fila{position:relative}
+.ses-fila .ses{padding-right:34px}
+.ses-fila .mas-ses{position:absolute;right:14px;top:50%;transform:translateY(-50%);border:0;background:none;visibility:hidden;
+  color:var(--tenue);padding:3px;border-radius:5px;display:inline-flex}
+.ses-fila:hover .mas-ses,.ses-fila:focus-within .mas-ses,.ses-fila .ses.activa~.mas-ses{visibility:visible}
+.ses-fila .mas-ses:hover{background:var(--linea);color:var(--texto)}
+.ses-fila .ses .punto{margin-right:0}
+.est-i{position:absolute;left:8px;top:50%;margin-top:-7px;width:14px;height:14px;stroke-width:2}
+.est-i.atencion{color:var(--ambar)}
+.est-i.error{color:var(--rojo)}
+.est.PidePermiso,.est.Error{display:none}
+.grupo-urgente{margin:6px 8px 4px;padding:4px 0;border-radius:9px;background:color-mix(in srgb,var(--ambar) 9%,transparent)}
+.grupo-urgente .ses{margin:1px 0;width:100%}
+.titulo-urgente{padding:2px 10px 4px;font-size:11.5px;font-weight:600;color:var(--ambar)}
+.proyecto .acc{display:flex;opacity:0;transition:opacity .15s var(--curva)}
+.proyecto:hover .acc,.proyecto:focus-within .acc{opacity:1}
+.proyecto:focus-visible{outline:2px solid var(--foco);outline-offset:-2px}
+button.proyecto{border:0;background:none;width:calc(100% - 16px);text-align:left;font:inherit;font-weight:600;font-size:13px}
+.archivadas-cab{margin-top:14px;color:var(--suave)}
+.ses-fila.archivada .ses{color:var(--suave)}
+
+/* ---------- Zona de abajo: un solo protagonista */
+.permiso>div{border-color:var(--ambar);display:flex;flex-direction:column;gap:10px}
+.permiso .pt{display:flex;align-items:flex-start;gap:8px;margin:0}
+.permiso .pt .i{margin-top:2px;color:var(--ambar)}
+.permiso-det{max-height:220px;overflow:auto;border:1px solid var(--linea);border-radius:8px;background:var(--ventana)}
+.permiso-det .udif{border:0}
+.permiso-det pre{margin:0;padding:8px 12px;font:12px/1.5 var(--mono);white-space:pre-wrap}
+.pd-ruta{padding:6px 12px;font-size:12px;color:var(--suave);border-bottom:1px solid var(--linea)}
+.permiso .ops{align-items:center}
+.permiso .atajos{margin-left:auto;font-size:12px;color:var(--tenue)}
+.banda.relevo>div{padding:6px 10px}
+.banda.relevo>div>span{display:flex;align-items:center;gap:4px;min-width:0;white-space:nowrap;overflow:hidden}
+.banda.relevo .motivo{color:var(--suave);overflow:hidden;text-overflow:ellipsis}
+.cola>div{display:flex;gap:4px;white-space:nowrap;overflow:hidden;padding:5px 12px}
+.cola>div span{overflow:hidden;text-overflow:ellipsis}
+.cola>div b{font-weight:600;color:var(--texto)}
+body.veterano #abajoSesion .pie>span:first-child{visibility:hidden}
+
+/* ---------- Conversación: el límite es información (el equipo lo resuelve), no un error */
+.aviso.limite{background:var(--ambar-fondo);color:var(--texto)}
+.relevo-linea>span{display:inline-flex;align-items:center;gap:5px}
+.relevo-linea .i{width:14px;height:14px;color:var(--suave)}
+
+/* ---------- Avisos con acción y diálogo propio */
+.avisos div{cursor:pointer}
+.avisos .enlace{color:var(--sobre-tinta);font-weight:600}
+.boton.prim.peligro-prim{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.boton.prim.peligro-prim:hover:not(:disabled){background:color-mix(in srgb,var(--rojo) 85%,#000)}
+#dlgPedir .campos{margin-top:12px}
+
+/* ---------- Color: logotipos con monograma legible, código y textos secundarios con contraste AA */
+.logo{background-image:linear-gradient(rgba(0,0,0,.24),rgba(0,0,0,.24));font-size:12px;letter-spacing:.02em}
+.sub{max-width:66ch}
+.cuenta .uso,span.uso{font-size:12px}
+@media (prefers-color-scheme: light){
+  .hljs-keyword,.hljs-doctag,.hljs-meta .hljs-keyword,.hljs-template-tag,.hljs-template-variable,.hljs-type,.hljs-variable.language_{color:#b0182b}
+  .hljs-built_in,.hljs-symbol{color:#9a4100}
+  .hljs-number,.hljs-attr,.hljs-attribute,.hljs-literal,.hljs-meta,.hljs-operator,.hljs-selector-attr,.hljs-selector-class,.hljs-selector-id,.hljs-variable{color:#00539f}
+  .hljs-title,.hljs-title.class_,.hljs-title.function_{color:#5e35b1}
+  .hljs-comment,.hljs-code,.hljs-formula{color:#5c636b}
+}
+.banda.relevo>div>span span{flex:none}
+.banda.relevo>div>span .motivo{flex:0 1 auto;min-width:0}

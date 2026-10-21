@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Product>MultiAgente</Product>
-    <Version>0.7.4</Version>
+    <Version>0.8.0</Version>
     <SatelliteResourceLanguages>es</SatelliteResourceLanguages>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>

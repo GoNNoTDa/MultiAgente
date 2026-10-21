@@ -153,6 +153,9 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             case "archivar":
                 await servicio.Archivar(Texto(m, "sesionId") ?? "");
                 break;
+            case "desarchivar":
+                servicio.Desarchivar(Texto(m, "sesionId") ?? "");
+                break;
             case "sesionRenombrar":
                 servicio.RenombrarSesion(Texto(m, "sesionId") ?? "", Texto(m, "titulo") ?? "");
                 break;

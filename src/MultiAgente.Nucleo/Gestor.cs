@@ -150,6 +150,7 @@ public sealed partial class Gestor : IAsyncDisposable
             }),
             proyectos = proyectos.Select(p => new { p.Id, p.Nombre, p.Ruta, sesiones = sesiones.Where(s => s.ProyectoId == p.Id).Select(Sesion) }),
             sueltas = sesiones.Where(s => s.ProyectoId is null || proyectos.All(p => p.Id != s.ProyectoId)).Select(Sesion),
+            archivadas = _repo.Sesiones(archivadas: true).Take(100).Select(Sesion),
         };
     }
 
@@ -957,6 +958,15 @@ public sealed partial class Gestor : IAsyncDisposable
         var s = _repo.Sesion(sesionId);
         if (s is null) return;
         s.Archivada = true;
+        _repo.GuardarSesion(s);
+        EnviarEstado();
+    }
+
+    /// <summary>Vuelve a poner en la lista una sesión archivada (la conversación no se había borrado).</summary>
+    public void Desarchivar(string sesionId)
+    {
+        var s = _repo.Sesion(sesionId) ?? throw new ExcepcionUsuario("Esa sesión ya no existe.");
+        s.Archivada = false;
         _repo.GuardarSesion(s);
         EnviarEstado();
     }
