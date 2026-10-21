@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MultiAgente · Maqueta</title>
+<style>
+:root{
+  --fondo:#f4f2ee; --ventana:#fbfaf8; --lateral:#f1efea; --tarjeta:#ffffff; --linea:#e3dfd7; --linea2:#d5d0c6;
+  --texto:#1f1d1a; --suave:#6b665e; --tenue:#9a948a; --tinta:#2a2724; --sobre-tinta:#fbfaf8;
+  --claude:#c96442; --codex:#10a37f; --gemini:#3b7ded;
+  --ambar:#b7791f; --ambar-fondo:#fdf4e3; --ambar-borde:#f0d9a8;
+  --rojo:#c2410c; --verde:#2f855a; --azul:#2b6cb0; --sel:#e8e4dc; --burbuja:#ece8e0;
+  --sombra:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --fondo:#151413; --ventana:#1e1d1b; --lateral:#191816; --tarjeta:#262421; --linea:#33302c; --linea2:#45413b;
+    --texto:#ece9e3; --suave:#a8a298; --tenue:#7b766d; --tinta:#ece9e3; --sobre-tinta:#1e1d1b;
+    --ambar:#e0a54a; --ambar-fondo:#2e2516; --ambar-borde:#5a4520; --sel:#2c2a26; --burbuja:#2c2a26;
+    --sombra:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+
+/* Barra de la maqueta */
+.demo{max-width:1280px;margin:0 auto;padding:20px 16px 12px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.demo h1{font-size:15px;font-weight:600;margin:0}
+.demo h1 span{color:var(--suave);font-weight:400}
+.pestanas{display:flex;gap:4px;background:var(--lateral);border:1px solid var(--linea);border-radius:10px;padding:3px;flex-wrap:wrap}
+.pestanas button{border:0;background:none;padding:5px 12px;border-radius:7px;cursor:pointer;color:var(--suave)}
+.pestanas button[aria-selected="true"]{background:var(--tarjeta);color:var(--texto);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.nota{max-width:1280px;margin:0 auto 10px;padding:0 16px;color:var(--suave);font-size:13px}
+
+/* Ventana */
+.marco{max-width:1280px;margin:0 auto 32px;padding:0 16px 8px;overflow-x:auto}
+.ventana{min-width:1180px;background:var(--ventana);border:1px solid var(--linea2);border-radius:10px;box-shadow:var(--sombra);overflow:hidden;height:760px;display:flex;flex-direction:column}
+.titulo{height:36px;display:flex;align-items:center;border-bottom:1px solid var(--linea);padding-left:14px;font-size:12px;color:var(--suave);flex:none}
+.titulo b{color:var(--texto);font-weight:600;margin-right:6px}
+.titulo .ctl{margin-left:auto;display:flex}
+.titulo .ctl span{width:46px;text-align:center;line-height:36px;color:var(--tenue)}
+.cuerpo{flex:1;display:flex;min-height:0}
+
+/* Lateral */
+aside{width:268px;background:var(--lateral);border-right:1px solid var(--linea);display:flex;flex-direction:column;flex:none}
+.nueva{margin:12px;padding:8px 12px;border:1px solid var(--linea2);background:var(--tarjeta);border-radius:8px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.nueva kbd{margin-left:auto;font:11px "Segoe UI";color:var(--tenue)}
+.menu{padding:0 8px}
+.menu div{padding:5px 10px;border-radius:6px;color:var(--suave);display:flex;gap:10px;align-items:center}
+.seccion{padding:14px 18px 4px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--tenue)}
+.proyecto{padding:4px 18px;font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.proyecto::before{content:"▾";color:var(--tenue);font-size:10px}
+.ses{margin:1px 8px;padding:6px 10px 6px 26px;border-radius:7px;display:flex;align-items:center;gap:8px;font-size:13px;position:relative}
+.ses.activa{background:var(--sel)}
+.ses .t{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ses .est{position:absolute;left:10px;width:8px;height:8px;border-radius:50%}
+.est.trab{border:2px solid var(--azul);border-right-color:transparent;animation:gira 1s linear infinite;width:10px!important;height:10px!important;left:9px!important}
+.est.esp{background:var(--verde)} .est.perm{background:var(--rojo)} .est.cerr{background:var(--tenue)}
+@keyframes gira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.est.trab{animation:none}}
+.prov{width:8px;height:8px;border-radius:2px;flex:none;display:inline-block}
+.p-claude{background:var(--claude)} .p-codex{background:var(--codex)} .p-gemini{background:var(--gemini)}
+.cuentas{margin-top:auto;border-top:1px solid var(--linea);padding:10px 14px 12px}
+.cuentas h4{margin:0 0 6px;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--tenue);font-weight:600;display:flex}
+.cuentas h4 span{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:400}
+.cta{display:grid;grid-template-columns:10px 1fr auto;gap:2px 8px;align-items:center;font-size:12px;margin:5px 0}
+.cta .barra{grid-column:2/4;height:4px;background:var(--linea);border-radius:2px;overflow:hidden}
+.cta .barra i{display:block;height:100%;border-radius:2px;background:var(--suave)}
+.cta .v{color:var(--suave);font-variant-numeric:tabular-nums}
+.cta.enfria .v{color:var(--ambar)}
+
+/* Principal */
+main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+.cab{height:48px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--linea);flex:none}
+.cab .nom{font-weight:600}
+.cab .ruta{color:var(--tenue);font-size:12px}
+.cab .quien{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--suave);border:1px solid var(--linea);border-radius:20px;padding:3px 10px 3px 8px}
+.conv{flex:1;overflow:auto;padding:24px 0}
+.col{max-width:760px;margin:0 auto;padding:0 28px}
+.yo{display:flex;flex-direction:column;align-items:flex-end;margin:6px 0 22px}
+.yo .burbuja{background:var(--burbuja);border-radius:14px 14px 4px 14px;padding:10px 14px;max-width:80%}
+.adjs{display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;justify-content:flex-end}
+.mini{width:120px;height:78px;border-radius:8px;border:1px solid var(--linea2);background:var(--tarjeta);overflow:hidden;position:relative}
+.mini .falsa{position:absolute;inset:8px;border-radius:4px;background:linear-gradient(var(--linea) 0 0) 0 0/100% 10px no-repeat,linear-gradient(var(--linea) 0 0) 0 18px/70% 6px no-repeat,linear-gradient(var(--linea) 0 0) 0 30px/85% 6px no-repeat,linear-gradient(var(--claude) 0 0) 0 46px/40% 14px no-repeat}
+.mini small{position:absolute;bottom:0;left:0;right:0;font-size:10px;padding:2px 6px;background:color-mix(in srgb,var(--tarjeta) 88%,transparent);color:var(--suave)}
+.fich{display:flex;align-items:center;gap:8px;border:1px solid var(--linea2);background:var(--tarjeta);border-radius:8px;padding:6px 10px;font-size:12px;height:fit-content}
+.fich b{font-weight:600}
+.fich em{font-style:normal;color:var(--tenue)}
+.ia{margin:0 0 20px}
+.ia p{margin:0 0 10px}
+.herr{color:var(--suave);font-size:13px;display:flex;align-items:center;gap:8px;margin:4px 0}
+.herr::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--linea2)}
+.herr .mas{color:var(--verde)} .herr .menos{color:var(--rojo)}
+.ia code{font:12.5px Consolas,monospace;background:var(--burbuja);padding:1px 5px;border-radius:4px}
+.divisoria{display:flex;align-items:center;gap:12px;margin:26px 0;color:var(--suave);font-size:12px}
+.divisoria::before,.divisoria::after{content:"";flex:1;height:1px;background:var(--linea2)}
+.divisoria span{display:flex;align-items:center;gap:6px;border:1px solid var(--linea2);border-radius:20px;padding:3px 12px;background:var(--ventana)}
+.traspaso{border:1px dashed var(--linea2);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--suave);margin:0 0 18px;display:flex;gap:8px;align-items:center}
+.traspaso b{color:var(--texto);font-weight:600}
+
+/* Caja de escribir */
+.abajo{flex:none;padding:0 0 16px}
+.banda{max-width:760px;margin:0 auto 8px;padding:0 28px}
+.banda div{display:flex;align-items:center;gap:10px;background:var(--ambar-fondo);border:1px solid var(--ambar-borde);color:var(--texto);border-radius:10px;padding:8px 10px 8px 12px;font-size:13px}
+.banda div>span:nth-child(2){flex:1}
+.banda .reloj{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ambar)}
+.banda button{border:1px solid var(--linea2);background:var(--tarjeta);border-radius:7px;padding:3px 10px;cursor:pointer}
+.banda button+button{margin-left:0}
+.caja{max-width:760px;margin:0 auto;padding:0 28px;position:relative}
+.caja .dentro{border:1px solid var(--linea2);background:var(--tarjeta);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);position:relative}
+.caja .pend{display:flex;gap:8px;padding:10px 12px 0;flex-wrap:wrap}
+.caja .pend .mini{width:72px;height:52px}
+.caja .pend .mini .falsa{inset:5px}
+.quitar{position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:var(--tinta);color:var(--sobre-tinta);font-size:10px;line-height:16px;text-align:center}
+.caja textarea{display:block;width:100%;border:0;background:none;resize:none;outline:none;padding:12px 16px 4px;font:inherit;color:var(--texto);height:52px}
+.caja textarea::placeholder{color:var(--tenue)}
+.fila{display:flex;align-items:center;gap:6px;padding:6px 10px 10px}
+.chip{white-space:nowrap;flex:none;border:1px solid transparent;background:none;border-radius:8px;padding:4px 8px;color:var(--suave);font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer}
+.chip:hover{background:var(--burbuja)}
+.chip.elige{border-color:var(--linea2);color:var(--texto)}
+.chip .flecha{font-size:9px;color:var(--tenue)}
+.mas-btn{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--linea2);background:none;font-size:17px;line-height:1;cursor:pointer;color:var(--suave)}
+.der{margin-left:auto;display:flex;align-items:center;gap:10px}
+.anillo{width:22px;height:22px;border-radius:50%;background:conic-gradient(var(--suave) 0 38%,var(--linea) 38% 100%);position:relative}
+.anillo::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--tarjeta)}
+.enviar{flex:none;width:32px;height:32px;border-radius:9px;border:0;background:var(--tinta);color:var(--sobre-tinta);font-size:16px;cursor:pointer}
+.pie{max-width:760px;margin:6px auto 0;padding:0 40px;font-size:11.5px;color:var(--tenue)}
+
+/* Desplegable de cuentas */
+.despl{position:absolute;bottom:58px;left:150px;width:400px;background:var(--tarjeta);border:1px solid var(--linea2);border-radius:12px;box-shadow:var(--sombra);padding:6px;z-index:5;display:none}
+.despl .op{display:grid;grid-template-columns:14px 1fr auto;gap:2px 10px;padding:8px 10px;border-radius:8px;align-items:center}
+.despl .op:hover{background:var(--burbuja)}
+.despl .op.sel{background:var(--sel)}
+.despl .op small{grid-column:2/4;color:var(--suave);font-size:11.5px}
+.despl .op .d{color:var(--suave);font-size:12px;font-variant-numeric:tabular-nums}
+.despl .op.off{opacity:.6}
+.despl hr{border:0;border-top:1px solid var(--linea);margin:4px 6px}
+.despl .tit{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--tenue);padding:6px 10px 2px}
+.auto{display:inline-block;flex:none;width:14px;height:14px;border-radius:4px;background:conic-gradient(var(--claude) 0 33%,var(--codex) 33% 66%,var(--gemini) 66%)}
+
+/* Arrastrar */
+.soltar{position:absolute;inset:8px;border:2px dashed var(--azul);border-radius:14px;background:color-mix(in srgb,var(--azul) 7%,var(--ventana));display:none;align-items:center;justify-content:center;flex-direction:column;gap:6px;z-index:6;color:var(--azul)}
+.soltar b{font-size:16px}
+.soltar span{color:var(--suave);font-size:13px}
+
+/* Ajustes */
+.ajustes{display:none;flex:1;min-height:0}
+.ajustes nav{width:200px;border-right:1px solid var(--linea);padding:16px 8px;flex:none}
+.ajustes nav div{padding:6px 12px;border-radius:7px;color:var(--suave);margin-bottom:2px}
+.ajustes nav div.on{background:var(--sel);color:var(--texto);font-weight:600}
+.ajustes .zona{flex:1;overflow:auto;padding:24px 32px}
+.ajustes h2{font-size:18px;margin:0 0 4px}
+.ajustes h3{font-size:14px;margin:28px 0 10px;display:flex;align-items:center}
+.ajustes .sub{color:var(--suave);margin:0 0 16px;font-size:13px}
+.boton{border:1px solid var(--linea2);background:var(--tarjeta);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px}
+.boton.prim{background:var(--tinta);color:var(--sobre-tinta);border-color:var(--tinta)}
+h3 .boton{margin-left:auto;font-weight:400}
+.lista{border:1px solid var(--linea);border-radius:12px;background:var(--tarjeta);overflow:hidden}
+.cuenta{display:grid;grid-template-columns:28px 1.4fr 1fr 1.6fr auto;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--linea)}
+.cuenta:first-child{border-top:0}
+.logo{width:28px;height:28px;border-radius:7px;color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.cuenta .n{font-weight:600}
+.cuenta .n small{display:block;font-weight:400;color:var(--suave);font-size:12px}
+.tipo{font-size:12px;color:var(--suave)}
+.tipo b{display:inline-block;font-weight:600;font-size:11px;border-radius:5px;padding:1px 6px;background:var(--burbuja);color:var(--texto);margin-right:4px}
+.ok{color:var(--verde);font-size:12px} .falta{color:var(--ambar);font-size:12px}
+.medidas{font-size:11.5px;color:var(--suave);display:grid;grid-template-columns:auto 1fr auto;gap:3px 8px;align-items:center}
+.medidas i{height:4px;border-radius:2px;background:var(--linea);position:relative;overflow:hidden}
+.medidas i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--p);background:var(--suave);border-radius:2px}
+.medidas i.alta::after{background:var(--ambar)}
+.equipo{border:1px solid var(--linea);border-radius:12px;background:var(--tarjeta);padding:14px 16px}
+.equipo .fila2{display:flex;gap:24px;flex-wrap:wrap;font-size:13px;color:var(--suave);margin-bottom:12px}
+.equipo .fila2 b{color:var(--texto);font-weight:600}
+.orden{display:flex;flex-direction:column;gap:6px}
+.orden div{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--ventana)}
+.orden div::before{content:"⋮⋮";color:var(--tenue);font-size:11px;letter-spacing:-2px}
+.orden em{font-style:normal;color:var(--tenue);margin-left:auto;font-size:12px}
+.interruptor{display:inline-block;width:30px;height:17px;border-radius:9px;background:var(--verde);vertical-align:middle;position:relative;margin-right:6px}
+.interruptor::after{content:"";position:absolute;top:2px;right:2px;width:13px;height:13px;border-radius:50%;background:#fff}
+.portatil{margin-top:28px;border:1px solid var(--linea);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--suave);display:flex;gap:12px;align-items:center}
+.portatil b{color:var(--texto)}
+
+/* Estados de pantalla */
+body[data-p="sesion"] .despl{display:block}
+body[data-p="arrastrar"] .soltar{display:flex}
+body:not([data-p="relevo"]) .solo-relevo{display:none}
+body[data-p="relevo"] .no-relevo{display:none}
+body[data-p="ajustes"] main{display:none}
+body[data-p="ajustes"] .ajustes{display:flex}
+body[data-p="ajustes"] aside .ses.activa{background:none}
+</style>
+</head>
+<body data-p="sesion">
+
+<div class="demo">
+  <h1>MultiAgente <span>· maqueta de la interfaz (v1)</span></h1>
+  <div class="pestanas" role="tablist">
+    <button role="tab" data-p="sesion" aria-selected="true">Sesión y cuentas</button>
+    <button role="tab" data-p="arrastrar" aria-selected="false">Arrastrar y soltar</button>
+    <button role="tab" data-p="relevo" aria-selected="false">Relevo</button>
+    <button role="tab" data-p="ajustes" aria-selected="false">Ajustes › Cuentas y equipos</button>
+  </div>
+</div>
+<p class="nota" id="nota"></p>
+
+<div class="marco">
+<div class="ventana">
+  <div class="titulo"><b>MultiAgente</b> · Revisión de la tienda web<div class="ctl"><span>—</span><span>☐</span><span>✕</span></div></div>
+  <div class="cuerpo">
+
+    <aside>
+      <div class="nueva">✎ Nueva sesión <kbd>Ctrl+N</kbd></div>
+      <div class="menu"><div>⌕ Buscar</div><div>☰ Archivadas</div><div>⚙ Ajustes</div></div>
+      <div class="seccion">Proyectos</div>
+      <div class="proyecto">tienda-web</div>
+      <div class="ses activa"><i class="est trab"></i><span class="t">Revisión de la tienda web</span><span class="prov p-claude no-relevo" title="Claude"></span><span class="prov p-codex solo-relevo" title="Codex"></span></div>
+      <div class="ses"><i class="est esp"></i><span class="t">Plan de MultiAgente</span><span class="prov p-codex"></span></div>
+      <div class="ses"><i class="est perm"></i><span class="t">Arreglar la cola de mensajes</span><span class="prov p-claude"></span></div>
+      <div class="proyecto">Laboral trunk</div>
+      <div class="ses"><i class="est esp"></i><span class="t">Informe de nóminas en PDF</span><span class="prov p-gemini"></span></div>
+      <div class="ses"><i class="est cerr"></i><span class="t">Migración de la base de datos</span><span class="prov p-claude"></span></div>
+      <div class="proyecto">Web Ayudas365</div>
+      <div class="ses"><i class="est cerr"></i><span class="t">Formulario de alta</span><span class="prov p-codex"></span></div>
+
+      <div class="cuentas">
+        <h4>Cuentas <span>equipo Principal</span></h4>
+        <div class="cta"><span class="prov p-claude"></span><span>Claude · Cuenta 1</span><span class="v no-relevo">72 %</span><span class="v solo-relevo">96 %</span><span class="barra"><i class="no-relevo" style="width:72%"></i><i class="solo-relevo" style="width:96%;background:var(--ambar)"></i></span></div>
+        <div class="cta enfria"><span class="prov p-claude"></span><span>Claude · Cuenta 2</span><span class="v">enfriando · 14:20</span><span class="barra"><i style="width:100%;background:var(--ambar)"></i></span></div>
+        <div class="cta"><span class="prov p-codex"></span><span>Codex · Empresa</span><span class="v">40 %</span><span class="barra"><i style="width:40%"></i></span></div>
+        <div class="cta"><span class="prov p-gemini"></span><span>Gemini · API</span><span class="v">3,20 € / 50 €</span><span class="barra"><i style="width:6%"></i></span></div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="cab">
+        <span class="nom">Revisión de la tienda web</span><span class="ruta">C:\projects\tienda-web</span>
+        <span class="quien no-relevo"><span class="prov p-claude"></span>Claude · Cuenta 1 · Opus 5.5</span>
+        <span class="quien solo-relevo"><span class="prov p-codex"></span>Codex · Empresa</span>
+      </div>
+
+      <div class="conv"><div class="col">
+        <div class="yo">
+          <div class="adjs">
+            <div class="mini"><div class="falsa"></div><small>captura_1.png</small></div>
+            <div class="fich"><span>📄</span><span><b>Plan.html</b><br><em>53 KB</em></span></div>
+          </div>
+          <div class="burbuja">Revisa el proyecto y la documentación. Te dejo una captura de cómo se ve hoy la ventana principal.</div>
+        </div>
+        <div class="ia">
+          <div class="herr">Leído <b>PlanImplementacion.md</b></div>
+          <div class="herr">Buscado «MotorCambioCuenta» · 6 resultados</div>
+          <div class="herr">Leído <b>CambioCuenta.cs</b></div>
+          <p style="margin-top:12px">El cambio de cuenta funciona porque todas las cuentas comparten la carpeta <code>projects\</code>: al relanzar con <code>--resume</code> en otra cuenta, Claude encuentra la misma conversación.</p>
+          <p>En la captura se ven las tarjetas de sesión con su estado y el consumo de cada cuenta arriba. ¿Quieres que proponga una versión simplificada?</p>
+        </div>
+
+        <div class="solo-relevo">
+          <div class="divisoria"><span><span class="prov p-codex"></span>Sigue en Codex · Empresa — Claude · Cuenta 1 llegó al 96 % del bloque de 5 h y la Cuenta 2 está enfriando</span></div>
+          <div class="traspaso">⇄ <span><b>Traspaso desde Claude · Cuenta 1</b> · resumen de lo hecho y pendiente, últimos 6 mensajes, 4 ficheros tocados</span><span style="margin-left:auto">ver ▸</span></div>
+          <div class="ia">
+            <div class="herr">Leído <b>tasks/Estado.md</b></div>
+            <div class="herr">Editado <b>Documentacion/Resumen.md</b> <span class="mas">+38</span> <span class="menos">−0</span></div>
+            <p style="margin-top:12px">Sigo donde lo dejó la sesión anterior: ya está revisado el núcleo y falta la parte de la Tienda. He añadido el resumen en <code>Documentacion/Resumen.md</code>.</p>
+          </div>
+        </div>
+      </div></div>
+
+      <div class="abajo">
+        <div class="banda no-relevo" style="display:none"></div>
+        <div class="banda solo-relevo"><div>⇄ <span>Claude · Cuenta 1 al <b>96 %</b> → sigue en <b>Codex · Empresa</b> en <span class="reloj" id="reloj">42 s</span>, al terminar el turno</span><button>Cambiar ya</button><button>Cancelar</button></div></div>
+        <div class="caja">
+          <div class="despl">
+            <div class="tit">¿Quién trabaja en esta sesión?</div>
+            <div class="op sel"><span class="auto"></span><span><b>Automático</b> · equipo Principal</span><span class="d">✓</span><small>Prioridad: Claude 1 → Claude 2 → Codex → Gemini. Releva solo al agotarse.</small></div>
+            <hr>
+            <div class="op"><span class="prov p-claude"></span><span>Claude · Cuenta 1</span><span class="d">5 h 72 % · sem. 40 %</span></div>
+            <div class="op off"><span class="prov p-claude"></span><span>Claude · Cuenta 2</span><span class="d" style="color:var(--ambar)">enfriando hasta 14:20</span></div>
+            <div class="op"><span class="prov p-codex"></span><span>Codex · Empresa</span><span class="d">5 h 40 %</span></div>
+            <div class="op"><span class="prov p-gemini"></span><span>Gemini · API</span><span class="d">3,20 € de 50 €</span></div>
+            <div class="op off"><span class="prov p-codex"></span><span>Codex · Personal</span><span class="d" style="color:var(--ambar)">falta autorizar</span></div>
+          </div>
+
+          <div class="dentro">
+            <div class="soltar"><b>Suelta para adjuntar</b><span>informe_errores.pdf, captura_2.png · se enviarán con tu mensaje</span></div>
+            <div class="pend">
+              <div class="mini"><div class="falsa"></div><span class="quitar">✕</span></div>
+              <div class="fich"><span>📄</span><span><b>Cuentas.cs</b><br><em>C:\projects\tienda-web\src\…</em></span></div>
+            </div>
+            <textarea placeholder="Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  @ para ficheros, / para órdenes"></textarea>
+            <div class="fila">
+              <button class="mas-btn" title="Adjuntar">+</button>
+              <button class="chip">✋ Pedir permiso <span class="flecha">▼</span></button>
+              <button class="chip no-relevo">Opus 5.5 · Alto <span class="flecha">▼</span></button>
+              <button class="chip solo-relevo">Modelo predeterminado <span class="flecha">▼</span></button>
+              <button class="chip elige no-relevo"><span class="auto"></span>Automático · Principal <span class="flecha">▼</span></button>
+              <button class="chip elige solo-relevo"><span class="auto"></span>Automático · Principal → Codex <span class="flecha">▼</span></button>
+              <div class="der"><span class="anillo" title="Contexto 38 %"></span><button class="enviar" title="Enviar">↑</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="pie">Intro envía · Mayús+Intro nueva línea · Esc dos veces interrumpe</div>
+      </div>
+    </main>
+
+    <section class="ajustes">
+      <nav><div>General</div><div class="on">Cuentas y equipos</div><div>Proyectos</div><div>Agentes</div><div>Acerca de</div></nav>
+      <div class="zona">
+        <h2>Cuentas y equipos</h2>
+        <p class="sub">Cada cuenta tiene su propia carpeta dentro de <b>datos\cuentas</b>. Tu configuración de siempre (~/.claude, ~/.codex, ~/.gemini) no se toca.</p>
+
+        <h3>Cuentas <button class="boton prim">＋ Añadir cuenta</button></h3>
+        <div class="lista">
+          <div class="cuenta">
+            <span class="logo" style="background:var(--claude)">C</span>
+            <span class="n">Claude · Cuenta 1<small>sergio@empresa.com · Max</small></span>
+            <span class="tipo"><b>Login</b><span class="ok">● Autorizada</span></span>
+            <span class="medidas">5 h<i style="--p:72%"></i>72 %<span>Semana</span><i style="--p:40%"></i>40 %</span>
+            <button class="boton">Editar</button>
+          </div>
+          <div class="cuenta">
+            <span class="logo" style="background:var(--claude)">C</span>
+            <span class="n">Claude · Cuenta 2<small>sergio.2@empresa.com · Pro</small></span>
+            <span class="tipo"><b>Login</b><span class="ok">● Autorizada</span></span>
+            <span class="medidas">5 h<i class="alta" style="--p:100%"></i>100 %<span>Semana</span><i style="--p:61%"></i>61 %</span>
+            <button class="boton">Editar</button>
+          </div>
+          <div class="cuenta">
+            <span class="logo" style="background:var(--codex)">O</span>
+            <span class="n">Codex · Empresa<small>ChatGPT Business</small></span>
+            <span class="tipo"><b>Login</b><span class="ok">● Autorizada</span></span>
+            <span class="medidas">5 h<i style="--p:40%"></i>40 %<span>Semana</span><i style="--p:22%"></i>22 %</span>
+            <button class="boton">Editar</button>
+          </div>
+          <div class="cuenta">
+            <span class="logo" style="background:var(--codex)">O</span>
+            <span class="n">Codex · Personal<small>—</small></span>
+            <span class="tipo"><b>Login</b><span class="falta">● Falta autorizar</span></span>
+            <span class="medidas" style="color:var(--tenue)">Sin datos de consumo</span>
+            <button class="boton prim">Autorizar…</button>
+          </div>
+          <div class="cuenta">
+            <span class="logo" style="background:var(--gemini)">G</span>
+            <span class="n">Gemini · API<small>Clave ••••••••3f9a</small></span>
+            <span class="tipo"><b>Clave de API</b><span class="ok">● Válida</span></span>
+            <span class="medidas">Mes<i style="--p:6%"></i>3,20 € de 50 €</span>
+            <button class="boton">Editar</button>
+          </div>
+        </div>
+
+        <h3>Equipos <button class="boton">＋ Nuevo equipo</button></h3>
+        <div class="equipo">
+          <div class="fila2"><span><b>Principal</b> (predeterminado)</span><span>Regla: <b>Prioridad ▾</b></span><span><span class="interruptor"></span>Permitir pasar a otro proveedor</span><span>Cuenta atrás: <b>60 s</b></span></div>
+          <div class="orden">
+            <div><span class="prov p-claude"></span>Claude · Cuenta 1<em>cambiar al 92 % (5 h) · 95 % (semana)</em></div>
+            <div><span class="prov p-claude"></span>Claude · Cuenta 2<em>cambiar al 92 % · 95 %</em></div>
+            <div><span class="prov p-codex"></span>Codex · Empresa<em>cambiar al 90 %</em></div>
+            <div><span class="prov p-gemini"></span>Gemini · API<em>reserva · presupuesto 50 €/mes</em></div>
+          </div>
+        </div>
+
+        <div class="portatil">🗂 <span>Todo vive en <b>C:\MultiAgente</b>. Cierra la aplicación y copia la carpeta a otro PC: tus cuentas, equipos y sesiones siguen ahí. Como mucho tendrás que volver a autorizar alguna cuenta.</span></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</div>
+
+<script>
+const notas = {
+  sesion: 'El chip de cuenta, junto al del modelo, elige quién trabaja: «Automático» deja que el equipo reparta y releve; también se puede fijar una cuenta. Cada cuenta enseña su consumo, si está enfriando o si falta autorizarla.',
+  arrastrar: 'Arrastrar ficheros o pegar capturas (Ctrl+V) los adjunta al mensaje: si el agente admite imágenes se le mandan tal cual; si no, se guardan en la sesión y se le pasa la ruta.',
+  relevo: 'La cuenta se agota: banda con cuenta atrás (Cambiar ya / Cancelar). Al terminar el turno la sesión sigue en otra cuenta. Entre proveedores el nuevo agente recibe un traspaso (resumen + últimos mensajes + ficheros); la conversación queda marcada con una línea divisoria.',
+  ajustes: 'Cuentas por login de la CLI o por clave de API, cada una en su carpeta. El equipo ordena las cuentas y fija la regla de reparto, si puede pasar a otro proveedor y la cuenta atrás.'
+};
+const nota = document.getElementById('nota');
+function ver(p){
+  document.body.dataset.p = p;
+  document.querySelectorAll('.pestanas button').forEach(b => b.setAttribute('aria-selected', b.dataset.p === p));
+  nota.textContent = notas[p];
+}
+document.querySelectorAll('.pestanas button').forEach(b => b.addEventListener('click', () => ver(b.dataset.p)));
+ver('sesion');
+let s = 42; setInterval(() => { s = s > 1 ? s - 1 : 60; document.getElementById('reloj').textContent = s + ' s'; }, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://adjuntos.multiagente; style-src 'self'; script-src 'self'">
+<title>MultiAgente</title>
+<link rel="stylesheet" href="lib/hljs-claro.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="lib/hljs-oscuro.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <aside>
+    <button class="nueva" id="btnNueva" title="Nueva sesión (Ctrl+N)">✎ Nueva sesión <kbd>Ctrl+N</kbd></button>
+    <nav class="menu">
+      <button id="btnCuentas">⚙ Cuentas y proveedores</button>
+      <button id="btnExtensiones">🧩 Extensiones</button>
+      <button id="btnEstadisticas">📊 Estadísticas</button>
+      <button id="btnConsumo">⏱ Consumo y límites</button>
+    </nav>
+    <div class="seccion">Proyectos <button class="mas-proy" id="btnProyectoNuevo" title="Nuevo proyecto">＋</button></div>
+    <div class="arbol" id="arbol"></div>
+    <div class="cuentas-lat">
+      <h4>Cuentas</h4>
+      <div id="cuentasLat"></div>
+    </div>
+  </aside>
+
+  <main>
+    <!-- Inicio: sesión nueva -->
+    <section class="vista" id="vInicio">
+      <div class="conv"><div class="col bienvenida">
+        <h1>¿En qué trabajamos?</h1>
+        <p class="sub">Claude Code, Codex, Gemini y los modelos por API que añadas, en una sola ventana.</p>
+        <section class="tarjeta" id="tarjetaSinCuentas" hidden>
+          <h2>Primero, añade una cuenta</h2>
+          <p>Una cuenta de Claude, Codex o Gemini (con su inicio de sesión) o de cualquier proveedor por API: GLM, DeepSeek, Kimi,
+            Qwen, OpenRouter, modelos locales con Ollama…</p>
+          <p><button class="boton prim" id="btnIrCuentas">Añadir cuenta</button></p>
+        </section>
+        <details class="tarjeta" id="tarjetaAgentes">
+          <summary><h2>Agentes en este equipo</h2><span id="resumenAgentes" class="tenue"></span></summary>
+          <div id="listaAgentes"></div>
+          <footer id="pieAgentes" hidden>
+            <span>Falta algo para usar algún agente.</span>
+            <button class="boton" id="btnRecomprobar">Comprobar otra vez</button>
+            <button class="boton prim" id="btnInstalar">Instalar lo que falta</button>
+          </footer>
+        </details>
+      </div></div>
+      <div class="abajo" id="abajoInicio"></div>
+    </section>
+
+    <!-- Sesión abierta -->
+    <section class="vista" id="vSesion" hidden>
+      <header class="cab">
+        <div class="cab-tit">
+          <span class="nom" id="sesTitulo"></span>
+          <button class="ruta enlace" id="sesCarpeta" title="Abrir la carpeta"></button>
+        </div>
+        <span class="estado-txt" id="sesEstado"></span>
+        <span class="contexto" id="sesContexto" hidden title="Contexto usado de la conversación"><i></i><b></b></span>
+        <label class="quien" title="Cuenta que trabaja en esta sesión"><span class="punto" id="sesPunto"></span>
+          <select id="sesCuenta"></select></label>
+        <button class="boton fino" id="btnCambios" title="Ver los ficheros cambiados">± Cambios <b id="cambiosN"></b></button>
+        <button class="boton fino" id="btnArchivar" title="Archivar la sesión (deja de verse en la lista)">Archivar</button>
+      </header>
+      <div class="conv" id="conv"><div class="col" id="entradas"></div></div>
+      <div class="abajo" id="abajoSesion"></div>
+    </section>
+
+    <!-- Estadísticas -->
+    <section class="vista" id="vEstadisticas" hidden>
+      <div class="conv"><div class="col ancha">
+        <h1>Estadísticas</h1>
+        <p class="sub">Lo que han informado los agentes: turnos, tokens y coste (el coste solo cuando el agente lo da, normalmente
+          en las cuentas de API). Los límites de cada cuenta se cambian en Cuentas y proveedores › «Límites…».</p>
+        <div class="periodo" id="periodo">
+          <button data-dias="1">Hoy</button><button data-dias="7" class="on">7 días</button><button data-dias="30">30 días</button>
+        </div>
+        <div class="cifras" id="cifras"></div>
+        <h2 class="titulo-seccion">Por cuenta</h2>
+        <div class="lista" id="estCuentas"></div>
+        <h2 class="titulo-seccion">Tokens por día</h2>
+        <div class="tarjeta barras" id="estDias"></div>
+        <h2 class="titulo-seccion">Sesiones que más han usado</h2>
+        <div class="lista" id="estSesiones"></div>
+      </div></div>
+    </section>
+
+    <!-- Consumo y límites -->
+    <section class="vista" id="vConsumo" hidden>
+      <div class="conv"><div class="col ancha">
+        <h1>Consumo y límites</h1>
+        <p class="sub">Cuánto ha gastado cada cuenta. Las suscripciones de Claude informan de su bloque de 5 horas y de su límite
+          semanal; el mes es el coste que informan los agentes frente al presupuesto que pongas. La marca de cada barra es donde
+          el equipo pasa a otra cuenta.</p>
+        <p><button class="boton" id="btnConsumoActualizar">↻ Actualizar ahora</button></p>
+        <div class="consumos" id="consumoCuentas"></div>
+      </div></div>
+    </section>
+
+    <!-- Extensiones compartidas -->
+    <section class="vista" id="vExtensiones" hidden>
+      <div class="conv"><div class="col ancha">
+        <h1>Extensiones</h1>
+        <p class="sub">Lo que pongas aquí lo usan <b>todas tus cuentas</b> (y, cuando el formato lo permite, Claude Code, Codex y
+          Gemini a la vez). Los cambios valen para las sesiones que se abran a partir de ahora.</p>
+
+        <h2 class="titulo-seccion">Servidores MCP
+          <button class="boton fino" id="btnMcpNuevo">＋ Añadir servidor</button>
+          <button class="boton fino" id="btnMcpImportar">Importar de mi configuración…</button></h2>
+        <p class="sub">Herramientas externas (GitHub, bases de datos, navegador…). MultiAgente se las pasa a cada sesión: no se
+          toca la configuración de cada agente. Las claves se guardan cifradas.</p>
+        <div id="mcpImportables" class="tarjeta" hidden></div>
+        <div id="mcpForm" class="tarjeta" hidden></div>
+        <div class="lista" id="listaMcp"></div>
+
+        <h2 class="titulo-seccion">Skills
+          <button class="boton fino" id="btnSkillNueva">＋ Nueva</button>
+          <button class="boton fino" data-importar="skills">Importar de mi configuración…</button>
+          <button class="boton fino" data-anadir="skills">Añadir carpeta…</button>
+          <button class="boton fino" data-carpeta="skills">Abrir carpeta</button></h2>
+        <p class="sub">Instrucciones especializadas que el agente carga cuando las necesita (formato SKILL.md). Una sola carpeta
+          para Claude Code, Codex y Gemini.</p>
+        <div id="importables-skills" class="tarjeta" hidden></div>
+        <div class="lista" id="listaSkills"></div>
+
+        <div id="carpetasExt"></div>
+
+        <h2 class="titulo-seccion">Plugins de Claude Code</h2>
+        <p class="sub">Se instalan una vez con <code>/plugin</code> en cualquier sesión de Claude y quedan para todas tus cuentas
+          de Claude. Aquí se activan o desactivan.</p>
+        <div class="lista" id="listaPlugins"></div>
+
+        <h2 class="titulo-seccion">Instrucciones comunes
+          <button class="boton fino" id="btnInstrUsuario">Copiar de mis instrucciones…</button></h2>
+        <p class="sub">Normas para todos los agentes y cuentas: se añaden al CLAUDE.md, AGENTS.md y GEMINI.md de cada cuenta en
+          un bloque marcado. Lo que cada agente recuerde por su cuenta se conserva y se comparte entre las cuentas de su proveedor.</p>
+        <div id="instrUsuario" class="tarjeta" hidden></div>
+        <textarea id="instrTexto" class="editor" rows="10" spellcheck="false" placeholder="Por ejemplo: Responde siempre en castellano. Antes de dar algo por hecho, pruébalo."></textarea>
+        <p><button class="boton prim" id="btnInstrGuardar">Guardar instrucciones</button></p>
+      </div></div>
+    </section>
+
+    <!-- Cuentas -->
+    <section class="vista" id="vCuentas" hidden>
+      <div class="conv"><div class="col ancha">
+        <h1>Cuentas y proveedores</h1>
+        <p class="sub">Cada cuenta tiene su propia carpeta dentro de <b>datos\cuentas</b>. Tu configuración de siempre
+          (~/.claude, ~/.codex, ~/.gemini) no se toca. Las claves se guardan cifradas en la carpeta de MultiAgente.</p>
+        <div class="lista" id="listaCuentas"></div>
+
+        <h2 class="titulo-seccion">Equipos <button class="boton fino" id="btnNuevoEquipo">＋ Nuevo equipo</button></h2>
+        <p class="sub">Un equipo reparte las sesiones «Automático» entre sus cuentas y, cuando una se agota, pasa la sesión a
+          la siguiente con margen sin perder el hilo (mismo proveedor: la misma conversación; otro: con un resumen de lo hecho).</p>
+        <div id="listaEquipos"></div>
+        <label class="casilla"><input type="checkbox" id="chkResumen"> Mantener un resumen de cada sesión para los relevos
+          (una llamada breve a Claude Haiku tras los turnos; solo en equipos con más de una cuenta)</label>
+
+        <section class="tarjeta" id="formCuenta">
+          <h2>Añadir cuenta</h2>
+          <div class="campos">
+            <label>Tipo de cuenta
+              <select id="fcTipo"></select>
+            </label>
+            <p class="ayuda" id="fcAyuda"></p>
+            <label>Nombre de la cuenta <input id="fcAlias" maxlength="40" placeholder="p. ej. Claude trabajo, GLM, DeepSeek"></label>
+            <label id="fcClaveL">Clave de API
+              <span class="fila-campo"><input id="fcClave" type="password" autocomplete="off" spellcheck="false">
+              <button class="boton fino" id="fcVerClave" type="button" title="Ver u ocultar">👁</button></span>
+              <button class="enlace" id="fcDondeClave" type="button"></button>
+            </label>
+            <label id="fcEndpointL">Dirección de la API <input id="fcEndpoint" spellcheck="false"></label>
+            <label id="fcModeloL">Modelo
+              <span class="fila-campo"><input id="fcModelo" list="fcModelos" spellcheck="false" placeholder="El que proponga el proveedor">
+              <button class="boton fino" id="fcListar" type="button">Actualizar lista</button></span>
+              <datalist id="fcModelos"></datalist>
+              <span class="ayuda" id="fcModelosInfo"></span>
+            </label>
+          </div>
+          <footer><span class="tenue" id="fcCatalogo"></span><button class="boton prim" id="fcAnadir">Añadir</button></footer>
+        </section>
+      </div></div>
+    </section>
+    <!-- Visor de cambios (a la derecha de la sesión) -->
+    <div class="panel" id="panelCambios" hidden>
+      <div class="panel-asa" id="panelAsa" title="Arrastra para cambiar el ancho"></div>
+      <header class="panel-cab">
+        <b>Cambios</b>
+        <span class="tenue" id="pcInfo"></span>
+        <div class="seg" id="pcModo">
+          <button data-modo="git" title="Todo lo que ha cambiado en la carpeta desde el último commit (git)">Carpeta</button>
+          <button data-modo="sesion" title="Las ediciones que han hecho los agentes en esta sesión">Esta sesión</button>
+        </div>
+        <button class="boton fino" id="pcRecargar" title="Actualizar">↻</button>
+        <button class="boton fino" id="pcCerrar" title="Cerrar el visor">✕</button>
+      </header>
+      <div class="panel-cuerpo" id="pcCuerpo"></div>
+    </div>
+  </main>
+
+  <dialog class="dialogo" id="dlgProyecto">
+    <h2 id="dpTitulo">Nuevo proyecto</h2>
+    <div class="campos">
+      <label>Nombre <input id="dpNombre" maxlength="60" placeholder="p. ej. Web de clientes"></label>
+      <label>Carpeta de trabajo
+        <span class="fila-campo"><input id="dpRuta" spellcheck="false" placeholder="C:\proyectos\web">
+        <button class="boton fino" id="dpElegir" type="button">Elegir…</button></span>
+      </label>
+      <p class="ayuda">Las sesiones nuevas del proyecto trabajan en esta carpeta. Puede haber varios proyectos en la misma
+        carpeta, y una sesión se puede pasar de un proyecto a otro arrastrándola en el lateral.</p>
+      <p class="error" id="dpError" hidden></p>
+    </div>
+    <footer><button class="boton" id="dpCancelar" type="button">Cancelar</button><button class="boton prim" id="dpGuardar" type="button">Crear</button></footer>
+  </dialog>
+
+  <dialog class="dialogo ancho" id="dlgImportar">
+    <h2>Importar conversaciones</h2>
+    <p class="ayuda">Las conversaciones de Claude Code, Codex y Gemini que ya tienes en este PC. Se copian a MultiAgente (los
+      originales no se tocan) y las sigues con tus cuentas: con una del mismo proveedor se retoman tal cual; con otra, el agente
+      recibe la conversación.</p>
+    <div class="imp-filtros">
+      <input id="imBuscar" type="search" placeholder="Buscar por título o carpeta…" spellcheck="false">
+      <select id="imOrigen"><option value="">Todas</option><option value="Claude">Claude Code</option><option value="Codex">Codex</option><option value="Gemini">Gemini CLI</option></select>
+      <label class="casilla"><input type="checkbox" id="imOcultar" checked> Ocultar las ya importadas</label>
+    </div>
+    <div class="imp-lista" id="imLista"></div>
+    <p class="error" id="imError" hidden></p>
+    <footer>
+      <button class="boton" id="imTodas" type="button">Marcar las que se ven</button>
+      <span class="hueco"></span>
+      <button class="boton" id="imCerrar" type="button">Cerrar</button>
+      <button class="boton prim" id="imImportar" type="button">Importar</button>
+    </footer>
+  </dialog>
+
+  <div class="menu-flot" id="menuFlot" role="menu" hidden></div>
+
+  <div class="soltar" id="soltar" hidden><b>Suelta para adjuntar</b><span>Se enviarán con tu mensaje</span></div>
+  <div class="avisos" id="avisos" aria-live="polite"></div>
+
+  <template id="tCaja">
+    <div class="banda relevo" hidden></div>
+    <div class="banda" hidden></div>
+    <div class="permiso" hidden></div>
+    <div class="cola" hidden></div>
+    <div class="caja">
+      <div class="campos-nueva" hidden>
+        <button class="chip elige carpeta" title="Carpeta de trabajo">📁 <span>Elegir carpeta…</span></button>
+        <select class="chip elige proyectos" title="Proyectos recientes"></select>
+        <label class="chip elige">Quién <select class="cuenta-nueva"></select></label>
+      </div>
+      <div class="dentro">
+        <div class="pend" hidden></div>
+        <div class="ordenes" hidden></div>
+        <textarea rows="1" placeholder="Escribe, arrastra ficheros o pega una captura (Ctrl+V)…  / para órdenes"></textarea>
+        <div class="fila">
+          <button class="mas-btn" title="Adjuntar ficheros">+</button>
+          <span class="opciones"></span>
+          <div class="der">
+            <button class="parar" title="Interrumpir (Esc dos veces)" hidden>■</button>
+            <button class="enviar" title="Enviar (Intro)">↑</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pie"><span>Intro envía · Mayús+Intro nueva línea · Esc dos veces interrumpe</span><span class="version"></span></div>
+  </template>
+
+<script src="lib/marked.umd.js"></script>
+<script src="lib/purify.min.js"></script>
+<script src="lib/highlight.min.js"></script>
+<script src="lib/diff.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

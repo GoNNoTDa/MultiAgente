@@ -1,0 +1,258 @@
+{
+  "version": "2026-10-20",
+  "nota": "Catálogo de proveedores por API. agente=Claude: API compatible con la de Anthropic (Claude Code con ANTHROPIC_BASE_URL). agente=Codex: API compatible con OpenAI Responses (Codex con model_providers). «modelos» es la lista de respaldo; si hay «listar», la aplicación pide la lista real al proveedor con la clave. Se puede editar sin recompilar.",
+  "proveedores": [
+    {
+      "id": "anthropic", "nombre": "Anthropic (clave de API)", "agente": "Claude", "baseUrl": null,
+      "claveUrl": "https://platform.claude.com/settings/keys",
+      "listar": { "url": "https://api.anthropic.com/v1/models?limit=1000", "auth": "x-api-key", "lista": "data", "id": "id", "nombre": "display_name" },
+      "modelos": ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"],
+      "entorno": {}, "confianza": "alta",
+      "fuentes": ["https://platform.claude.com/docs/en/about-claude/models/overview"]
+    },
+    {
+      "id": "zai", "nombre": "GLM · Z.ai (internacional)", "agente": "Claude", "baseUrl": "https://api.z.ai/api/anthropic",
+      "claveUrl": "https://z.ai/manage-apikey/apikey-list", "listar": null,
+      "modelos": ["glm-5.3[1m]", "glm-5.3", "glm-5.3-flash[1m]", "glm-5.3-flash"],
+      "entorno": { "API_TIMEOUT_MS": "3000000", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3[1m]", "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3[1m]", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3-flash[1m]" },
+      "notas": "Vale para el GLM Coding Plan y para la API normal.", "confianza": "alta",
+      "fuentes": ["https://docs.z.ai/devpack/tool/claude"]
+    },
+    {
+      "id": "zhipu", "nombre": "GLM · Zhipu BigModel (China)", "agente": "Claude", "baseUrl": "https://open.bigmodel.cn/api/anthropic",
+      "claveUrl": "https://bigmodel.cn/apikey/coding-plan-per", "listar": null,
+      "modelos": ["glm-5.3[1m]", "glm-5.3", "glm-5.3-flash[1m]", "glm-5.3-flash"],
+      "entorno": { "API_TIMEOUT_MS": "3000000", "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-5.3[1m]", "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-5.3[1m]", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-5.3-flash[1m]" },
+      "notas": "Las claves del plan personal, del de equipo y de la API normal no son intercambiables.", "confianza": "alta",
+      "fuentes": ["https://docs.bigmodel.cn/cn/coding-plan/tool/claude"]
+    },
+    {
+      "id": "deepseek", "nombre": "DeepSeek", "agente": "Claude", "baseUrl": "https://api.deepseek.com/anthropic",
+      "claveUrl": "https://platform.deepseek.com/api_keys",
+      "listar": { "url": "https://api.deepseek.com/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": "name" },
+      "modelos": ["deepseek-v4-pro", "deepseek-flash[1m]", "deepseek-flash"],
+      "entorno": { "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-flash[1m]", "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-flash[1m]", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-flash", "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-flash" },
+      "notas": "Ignora cache_control, top_k y thinking.budget_tokens.", "confianza": "alta",
+      "fuentes": ["https://api-docs.deepseek.com/guides/anthropic_api", "https://api-docs.deepseek.com/guides/coding_agents"]
+    },
+    {
+      "id": "moonshot", "nombre": "Kimi · Moonshot", "agente": "Claude", "baseUrl": "https://api.moonshot.ai/anthropic",
+      "claveUrl": "https://platform.kimi.ai/console/api-keys",
+      "listar": { "url": "https://api.moonshot.ai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["kimi-k3[1m]", "kimi-k3", "kimi-k2.7-code", "kimi-k2.7-code-highspeed", "kimi-k2.6"],
+      "entorno": { "ANTHROPIC_DEFAULT_OPUS_MODEL": "kimi-k3[1m]", "ANTHROPIC_DEFAULT_SONNET_MODEL": "kimi-k3[1m]", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "kimi-k2.7-code", "ANTHROPIC_DEFAULT_FABLE_MODEL": "kimi-k3[1m]", "CLAUDE_CODE_SUBAGENT_MODEL": "kimi-k3[1m]", "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000" },
+      "notas": "Las claves internacionales (.ai) y de China (.com/.cn) no son intercambiables.", "confianza": "alta",
+      "fuentes": ["https://platform.kimi.ai/docs/guide/claude-code-kimi"]
+    },
+    {
+      "id": "minimax", "nombre": "MiniMax (internacional)", "agente": "Claude", "baseUrl": "https://api.minimax.io/anthropic",
+      "claveUrl": "https://platform.minimax.io/console/plan",
+      "listar": { "url": "https://api.minimax.io/anthropic/v1/models", "auth": "x-api-key", "lista": "data", "id": "id", "nombre": "display_name" },
+      "modelos": ["MiniMax-M3.1-Flash[1m]", "MiniMax-M3.1-Flash", "MiniMax-M3", "MiniMax-M2.7"],
+      "entorno": { "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M3.1-Flash[1m]", "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M3.1-Flash[1m]", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M3.1-Flash[1m]", "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "524288" },
+      "confianza": "alta (dirección) · media (modelos)",
+      "fuentes": ["https://platform.minimax.io/docs/token-plan/claude-code"]
+    },
+    {
+      "id": "minimax-cn", "nombre": "MiniMax (China)", "agente": "Claude", "baseUrl": "https://api.minimaxi.com/anthropic",
+      "claveUrl": "https://platform.minimaxi.com",
+      "listar": { "url": "https://api.minimaxi.com/anthropic/v1/models", "auth": "x-api-key", "lista": "data", "id": "id", "nombre": "display_name" },
+      "modelos": ["MiniMax-M3.1-Flash[1m]", "MiniMax-M3"], "entorno": {}, "confianza": "media",
+      "fuentes": ["https://platform.minimax.io/docs/token-plan/claude-code"]
+    },
+    {
+      "id": "qwen", "nombre": "Qwen · Alibaba Model Studio", "agente": "Claude", "baseUrl": "https://coding-intl.dashscope.aliyuncs.com/apps/anthropic",
+      "claveUrl": "https://modelstudio.console.alibabacloud.com/ap-southeast-1/subscription/coding-plan", "listar": null,
+      "modelos": ["qwen3.7-max", "qwen3.7-plus", "qwen3.8-flash", "qwen3.6-flash", "qwen3-coder-flash"],
+      "entorno": { "ANTHROPIC_DEFAULT_OPUS_MODEL": "qwen3.7-max", "ANTHROPIC_DEFAULT_SONNET_MODEL": "qwen3.7-max", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qwen3.6-flash", "CLAUDE_CODE_SUBAGENT_MODEL": "qwen3.7-max" },
+      "notas": "La dirección es la del Coding Plan. Para pago por uso: https://{WorkspaceId}.ap-southeast-1.maas.aliyuncs.com/apps/anthropic (otras regiones: cn-beijing, us-east-1, eu-central-1, ap-northeast-1). La clave debe ser de la misma región. No tiene lista de modelos.",
+      "confianza": "alta", "fuentes": ["https://www.alibabacloud.com/help/en/model-studio/claude-code"]
+    },
+    {
+      "id": "openrouter", "nombre": "OpenRouter", "agente": "Claude", "baseUrl": "https://openrouter.ai/api",
+      "claveUrl": "https://openrouter.ai/settings/keys",
+      "listar": { "url": "https://openrouter.ai/api/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": "name" },
+      "modelos": ["anthropic/claude-opus-5", "anthropic/claude-sonnet-5"],
+      "entorno": { "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1" },
+      "notas": "OpenRouter solo garantiza el funcionamiento con modelos de Anthropic; con otros puede fallar.", "confianza": "alta",
+      "fuentes": ["https://openrouter.ai/docs/cookbook/coding-agents/claude-code-integration"]
+    },
+    {
+      "id": "deepinfra", "nombre": "DeepInfra (Kimi, DeepSeek, GLM…)", "agente": "Claude", "baseUrl": "https://api.deepinfra.com/anthropic",
+      "claveUrl": "https://deepinfra.com/dash/api_keys", "listar": null,
+      "modelos": ["moonshotai/Kimi-K3", "deepseek-ai/DeepSeek-V4-Pro-0813", "deepseek-ai/DeepSeek-V4-Flash-0731", "zai-org/GLM-5.2", "inclusionAI/Ling-3.0-flash"],
+      "entorno": { "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-ai/DeepSeek-V4-Pro-0813", "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-ai/DeepSeek-V4-Flash-0731", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "inclusionAI/Ling-3.0-flash", "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384" },
+      "confianza": "alta", "fuentes": ["https://docs.deepinfra.com/integrations/anthropic"]
+    },
+    {
+      "id": "fireworks", "nombre": "Fireworks AI", "agente": "Claude", "baseUrl": "https://api.fireworks.ai/inference",
+      "claveUrl": "https://app.fireworks.ai/settings/users/api-keys",
+      "listar": { "url": "https://api.fireworks.ai/v1/accounts/fireworks/models", "auth": "bearer", "lista": "models", "id": "name", "nombre": "displayName" },
+      "modelos": ["glm-latest", "glm-fast-latest", "kimi-latest", "deepseek-flash-latest"], "entorno": {}, "confianza": "media",
+      "fuentes": ["https://docs.fireworks.ai/ecosystem/fireconnect/codex"]
+    },
+    {
+      "id": "vercel", "nombre": "Vercel AI Gateway", "agente": "Claude", "baseUrl": "https://ai-gateway.vercel.sh/claude-code",
+      "claveUrl": "https://vercel.com/dashboard", "listar": { "url": "https://ai-gateway.vercel.sh/claude-code/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["anthropic/claude-opus-5", "anthropic/claude-sonnet-5"],
+      "entorno": { "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1" }, "confianza": "alta",
+      "fuentes": ["https://vercel.com/docs/ai-gateway/coding-agents/claude-code"]
+    },
+    {
+      "id": "ollama", "nombre": "Ollama (en este equipo)", "agente": "Claude", "baseUrl": "http://localhost:11434", "sinClave": true, "claveFija": "ollama",
+      "claveUrl": "https://ollama.com/download",
+      "listar": { "url": "http://localhost:11434/v1/models", "auth": "ninguna", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["qwen3-coder", "gpt-oss:120b", "qwen3.5"], "entorno": {},
+      "notas": "Modelos locales: no salen datos del equipo. Recomiendan contexto de 64k o más.", "confianza": "alta",
+      "fuentes": ["https://docs.ollama.com/integrations/claude-code"]
+    },
+    {
+      "id": "lmstudio", "nombre": "LM Studio (en este equipo)", "agente": "Claude", "baseUrl": "http://localhost:1234", "sinClave": true, "claveFija": "lmstudio",
+      "claveUrl": "https://lmstudio.ai",
+      "listar": { "url": "http://localhost:1234/v1/models", "auth": "ninguna", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["openai/gpt-oss-20b"], "entorno": {},
+      "notas": "LM Studio 0.4.1 o superior, con el modelo cargado.", "confianza": "media",
+      "fuentes": ["https://lmstudio.ai/docs/integrations/claude-code"]
+    },
+    {
+      "id": "litellm", "nombre": "LiteLLM (pasarela propia)", "agente": "Claude", "baseUrl": "http://localhost:4000",
+      "claveUrl": "https://docs.litellm.ai",
+      "listar": { "url": "{base}/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": [], "entorno": { "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1" }, "confianza": "media",
+      "fuentes": ["https://docs.litellm.ai/docs/tutorials/claude_non_anthropic_models"]
+    },
+    {
+      "id": "nvidia", "nombre": "NVIDIA · build.nvidia.com (Kimi, GLM, DeepSeek…)", "agente": "Claude", "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "traducir": true, "claveUrl": "https://build.nvidia.com/settings/api-keys",
+      "listar": { "url": "https://integrate.api.nvidia.com/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["nvidia/nemotron-3-ultra-550b-a55b", "nvidia/nemotron-3.5-super-vl-120b-a12b", "nvidia/nemotron-3.5-lightning-30b-a3b", "stepfun-ai/step-5-preview", "z-ai/glm-5.3", "deepseek-ai/deepseek-v4.1-flash", "moonshotai/kimi-k2.6"],
+      "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384" },
+      "notas": "La clave empieza por nvapi-. NVIDIA solo tiene la API de OpenAI: MultiAgente la traduce para Claude Code. Ojo: NVIDIA lista modelos que no da a todas las cuentas y los más populares (GLM, DeepSeek, Kimi) suelen estar saturados en el plan gratuito; los Nemotron de NVIDIA son los que mejor responden. Usa «Modelo… › Probar cuáles funcionan» para ver los tuyos.",
+      "confianza": "media", "fuentes": ["https://docs.api.nvidia.com/nim/reference/llm-apis", "https://integrate.api.nvidia.com/v1/models"]
+    },
+    {
+      "id": "groq", "nombre": "Groq", "agente": "Claude", "baseUrl": "https://api.groq.com/openai/v1", "traducir": true,
+      "claveUrl": "https://console.groq.com/keys",
+      "listar": { "url": "https://api.groq.com/openai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": [], "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192" },
+      "notas": "Solo tiene la API de OpenAI: MultiAgente la traduce para Claude Code. Muy rápido; pulsa «Actualizar lista» para ver sus modelos.",
+      "confianza": "media", "fuentes": ["https://console.groq.com/docs/openai"]
+    },
+    {
+      "id": "cerebras", "nombre": "Cerebras", "agente": "Claude", "baseUrl": "https://api.cerebras.ai/v1", "traducir": true,
+      "claveUrl": "https://cloud.cerebras.ai",
+      "listar": { "url": "https://api.cerebras.ai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": [], "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192" },
+      "notas": "Solo tiene la API de OpenAI: MultiAgente la traduce para Claude Code. Pulsa «Actualizar lista» para ver sus modelos.",
+      "confianza": "media", "fuentes": ["https://inference-docs.cerebras.ai/resources/openai"]
+    },
+    {
+      "id": "mistral", "nombre": "Mistral (Devstral, Codestral…)", "agente": "Claude", "baseUrl": "https://api.mistral.ai/v1", "traducir": true,
+      "claveUrl": "https://console.mistral.ai/api-keys",
+      "listar": { "url": "https://api.mistral.ai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": [], "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384" },
+      "notas": "Su API es la de OpenAI: MultiAgente la traduce para Claude Code. Pulsa «Actualizar lista» para ver sus modelos.",
+      "confianza": "media", "fuentes": ["https://docs.mistral.ai/api"]
+    },
+    {
+      "id": "together", "nombre": "Together AI", "agente": "Claude", "baseUrl": "https://api.together.xyz/v1", "traducir": true,
+      "claveUrl": "https://api.together.ai/settings/api-keys",
+      "listar": { "url": "https://api.together.xyz/v1/models", "auth": "bearer", "lista": "", "id": "id", "nombre": "display_name" },
+      "modelos": [], "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "16384" },
+      "notas": "Solo tiene la API de OpenAI: MultiAgente la traduce para Claude Code. Pulsa «Actualizar lista» para ver sus modelos.",
+      "confianza": "media", "fuentes": ["https://docs.together.ai/docs/openai-api-compatibility"]
+    },
+    {
+      "id": "openai-compatible", "nombre": "Otro compatible con OpenAI (servidor propio, vLLM…)", "agente": "Claude",
+      "baseUrl": "https://{SERVIDOR}/v1", "traducir": true, "claveUrl": null,
+      "listar": { "url": "{base}/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": [], "entorno": { "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192" },
+      "notas": "Cualquier servicio con la API de OpenAI (Chat Completions): MultiAgente la traduce para Claude Code. Pon su dirección terminada en /v1 y su clave (si no pide, escribe cualquier cosa).",
+      "confianza": "media", "fuentes": ["https://platform.openai.com/docs/api-reference/chat"]
+    },
+
+    {
+      "id": "codex-openrouter", "nombre": "OpenRouter (con Codex)", "agente": "Codex", "baseUrl": "https://openrouter.ai/api/v1",
+      "claveUrl": "https://openrouter.ai/settings/keys",
+      "listar": { "url": "https://openrouter.ai/api/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": "name" },
+      "modelos": ["openai/gpt-5.6-sol", "anthropic/claude-opus-5"], "confianza": "alta",
+      "fuentes": ["https://openrouter.ai/blog/tutorials/codex-cli-openrouter/"]
+    },
+    {
+      "id": "codex-deepseek", "nombre": "DeepSeek (con Codex)", "agente": "Codex", "baseUrl": "https://api.deepseek.com/",
+      "claveUrl": "https://platform.deepseek.com/api_keys",
+      "listar": { "url": "https://api.deepseek.com/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": "name" },
+      "modelos": ["deepseek-v4-pro", "deepseek-flash"], "confianza": "alta",
+      "fuentes": ["https://api-docs.deepseek.com/quick_start/agent_integrations/codex/"]
+    },
+    {
+      "id": "codex-kimi", "nombre": "Kimi (con Codex)", "agente": "Codex", "baseUrl": "https://api.moonshot.ai/v1",
+      "claveUrl": "https://platform.kimi.ai/console/api-keys",
+      "listar": { "url": "https://api.moonshot.ai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["kimi-k3", "kimi-k2.7-code", "kimi-k2.7-code-highspeed"], "confianza": "alta",
+      "fuentes": ["https://platform.kimi.ai/docs/guide/codex-kimi"]
+    },
+    {
+      "id": "codex-zai", "nombre": "GLM · Z.ai (con Codex)", "agente": "Codex", "baseUrl": "https://api.z.ai/api/v1",
+      "claveUrl": "https://z.ai/manage-apikey/apikey-list", "listar": null,
+      "modelos": ["glm-5.3", "glm-5.3-flash"], "confianza": "alta",
+      "fuentes": ["https://docs.z.ai/devpack/tool/codex"]
+    },
+    {
+      "id": "codex-minimax", "nombre": "MiniMax (con Codex)", "agente": "Codex", "baseUrl": "https://api.minimax.io/v1",
+      "claveUrl": "https://platform.minimax.io/console/plan",
+      "listar": { "url": "https://api.minimax.io/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["MiniMax-M3", "MiniMax-M3.1-Flash-Preview"], "confianza": "media",
+      "fuentes": ["https://platform.minimax.io/docs/token-plan/codex"]
+    },
+    {
+      "id": "codex-fireworks", "nombre": "Fireworks (con Codex)", "agente": "Codex", "baseUrl": "https://api.fireworks.ai/inference/v1",
+      "claveUrl": "https://app.fireworks.ai/settings/users/api-keys",
+      "listar": { "url": "https://api.fireworks.ai/v1/accounts/fireworks/models", "auth": "bearer", "lista": "models", "id": "name", "nombre": "displayName" },
+      "modelos": ["glm-latest", "kimi-latest", "deepseek-flash-latest"], "notas": "Codex 0.134 o superior; los modelos MiniMax no funcionan aquí.", "confianza": "alta",
+      "fuentes": ["https://docs.fireworks.ai/ecosystem/fireconnect/codex"]
+    },
+    {
+      "id": "codex-xai", "nombre": "Grok · xAI (con Codex)", "agente": "Codex", "baseUrl": "https://api.x.ai/v1",
+      "claveUrl": "https://console.x.ai",
+      "listar": { "url": "https://api.x.ai/v1/models", "auth": "bearer", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["grok-4.7", "grok-4.6"], "notas": "Sin guía oficial de xAI para Codex.", "confianza": "media",
+      "fuentes": ["https://docs.x.ai/docs/api-reference"]
+    },
+    {
+      "id": "codex-nvidia", "nombre": "NVIDIA · build.nvidia.com (con Codex)", "agente": "Codex", "baseUrl": "https://integrate.api.nvidia.com/v1",
+      "claveUrl": "https://build.nvidia.com/settings/api-keys", "listar": null, "soloModelos": true,
+      "modelos": ["nvidia/nemotron-3-ultra-550b-a55b", "nvidia/nemotron-3-super-120b-a12b", "openai/gpt-oss-20b",
+                  "nvidia/nemotron-3.5-super-vl-120b-a12b", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"],
+      "notas": "La clave empieza por nvapi-. Codex usa la API Responses, que en NVIDIA solo admiten estos modelos (comprobado el 20/10/2026). Sus otros modelos (Kimi, GLM, DeepSeek…) solo van por Chat Completions: para usarlos, pásalos por LiteLLM (proveedor nvidia_nim) y añade la cuenta como «LiteLLM».",
+      "confianza": "media",
+      "fuentes": ["https://docs.nvidia.com/nim/large-language-models/latest/ai-assistant-integrations/codex-cli.html", "https://integrate.api.nvidia.com/v1/models"]
+    },
+    {
+      "id": "codex-azure", "nombre": "Azure OpenAI (con Codex)", "agente": "Codex", "baseUrl": "https://{RECURSO}.openai.azure.com/openai/v1",
+      "claveUrl": "https://ai.azure.com", "listar": null,
+      "modelos": ["gpt-6-astra", "gpt-6-sol"], "notas": "Cambia {RECURSO} por el nombre de tu recurso; el modelo es el nombre del despliegue.", "confianza": "alta",
+      "fuentes": ["https://learn.microsoft.com/azure/foundry/openai/how-to/codex"]
+    },
+    {
+      "id": "codex-vercel", "nombre": "Vercel AI Gateway (con Codex)", "agente": "Codex", "baseUrl": "https://ai-gateway.vercel.sh/codex/v1",
+      "claveUrl": "https://vercel.com/dashboard", "listar": null,
+      "modelos": ["openai/gpt-6-astra", "openai/gpt-5.5-pro"], "confianza": "alta",
+      "fuentes": ["https://vercel.com/docs/ai-gateway/coding-agents/openai-codex"]
+    },
+    {
+      "id": "codex-ollama", "nombre": "Ollama (con Codex, en este equipo)", "agente": "Codex", "baseUrl": "http://localhost:11434/v1", "sinClave": true, "claveFija": "ollama",
+      "claveUrl": "https://ollama.com/download",
+      "listar": { "url": "http://localhost:11434/v1/models", "auth": "ninguna", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["gpt-oss:120b", "qwen3-coder"], "notas": "Ollama 0.13.3 o superior.", "confianza": "alta",
+      "fuentes": ["https://docs.ollama.com/integrations/codex"]
+    },
+    {
+      "id": "codex-lmstudio", "nombre": "LM Studio (con Codex, en este equipo)", "agente": "Codex", "baseUrl": "http://localhost:1234/v1", "sinClave": true, "claveFija": "lmstudio",
+      "claveUrl": "https://lmstudio.ai",
+      "listar": { "url": "http://localhost:1234/v1/models", "auth": "ninguna", "lista": "data", "id": "id", "nombre": null },
+      "modelos": ["openai/gpt-oss-20b"], "notas": "LM Studio 0.3.29 o superior.", "confianza": "alta",
+      "fuentes": ["https://lmstudio.ai/docs/integrations/codex"]
+    }
+  ]
+}

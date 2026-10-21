@@ -1,0 +1,4 @@
+# Texto con saltos LF en el repositorio y en la copia de trabajo (así se escriben los ficheros del proyecto)
+* text=auto eol=lf
+*.ico binary
+*.png binary

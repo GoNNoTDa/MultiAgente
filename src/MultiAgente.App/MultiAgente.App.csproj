@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>MultiAgente.App</RootNamespace>
+    <AssemblyName>MultiAgente</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!-- Se genera con tools\Generar-Icono.ps1 -->
+    <ApplicationIcon>MultiAgente.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+  </ItemGroup>
+
+  <!-- El paquete de WebView2 referencia siempre su control de WPF; esta aplicación es WinForms y no lo usa
+       (evita el conflicto MSB3277 de WindowsBase). -->
+  <Target Name="QuitarWebView2Wpf" BeforeTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <Reference Remove="@(Reference)" Condition="'%(Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+    </ItemGroup>
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiAgente.Nucleo\MultiAgente.Nucleo.csproj" />
+    <ProjectReference Include="..\MultiAgente.Datos\MultiAgente.Datos.csproj" />
+  </ItemGroup>
+
+  <!-- Interfaz web: carpeta ui\ junto al ejecutable (también al publicar, fuera del fichero único) -->
+  <ItemGroup>
+    <Content Include="ui\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+             ExcludeFromSingleFile="true" />
+    <!-- Catálogo de proveedores por API: editable sin recompilar -->
+    <Content Include="catalogo\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest"
+             ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+</Project>

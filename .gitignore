@@ -1,0 +1,10 @@
+# Datos del usuario: inicios de sesión, claves, sesiones (nunca al repositorio)
+datos/
+
+# Compilación
+bin/
+obj/
+dist/
+*.user
+.vs/
+TestResults/

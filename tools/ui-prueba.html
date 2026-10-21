@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>MultiAgente · interfaz simulada</title>
+<!--
+  Prueba de la interfaz sin la aplicación: carga ui\index.html, app.css y app.js tal cual, con un puente simulado
+  (window.chrome.webview) que contesta como la aplicación. Abrir con un servidor local desde la raíz del repositorio:
+    python -m http.server 8766 --bind 127.0.0.1   →   http://127.0.0.1:8766/tools/ui-prueba.html
+-->
+</head>
+<body>
+<script>
+(async () => {
+  const base = '../src/MultiAgente.App/ui/';
+  const doc = new DOMParser().parseFromString(await (await fetch(base + 'index.html', { cache: 'no-store' })).text(), 'text/html');
+  for (const l of doc.querySelectorAll('link[rel=stylesheet]')) {
+    const n = document.createElement('link');
+    n.rel = 'stylesheet'; n.href = base + l.getAttribute('href') + '?v=' + Date.now();
+    if (l.media) n.media = l.media;
+    document.head.append(n);
+  }
+  document.body.innerHTML = doc.body.innerHTML;
+  const catalogo = await (await fetch('../src/MultiAgente.App/catalogo/proveedores.json')).json();
+
+  const oyentes = [];
+  const emitir = (d) => oyentes.forEach((f) => f({ data: JSON.parse(JSON.stringify(d)) }));
+  const PNG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140"><rect width="220" height="140" fill="#f1efea"/><rect x="12" y="12" width="196" height="16" fill="#d5d0c6"/><rect x="12" y="40" width="140" height="10" fill="#e3dfd7"/><rect x="12" y="60" width="170" height="10" fill="#e3dfd7"/><rect x="12" y="92" width="80" height="26" rx="5" fill="#c96442"/></svg>');
+
+  const cuentas = [
+    { id: 'c1', alias: 'Claude · Trabajo', proveedor: 'Claude', tipo: 'Login', autorizada: true, listo: true,
+      consumo: { pct5h: 100, pctSemana: 41, reinicio5h: new Date(Date.now() + 5400000).toISOString(), reinicioSemana: new Date(Date.now() + 3 * 86400000).toISOString(),
+        enfriandoHasta: new Date(Date.now() + 5400000).toISOString(), motivo: 'You have hit your limit · resets 11pm', momento: new Date(Date.now() - 120000).toISOString() }, sinMargen: 'ha llegado a su límite' },
+    { id: 'c5', alias: 'Claude · Personal', proveedor: 'Claude', tipo: 'Login', autorizada: true, listo: true, consumo: { pct5h: 81, pctSemana: 64, reinicio5h: new Date(Date.now() + 7900000).toISOString(), reinicioSemana: new Date(Date.now() + 4.2 * 86400000).toISOString(), momento: new Date(Date.now() - 60000).toISOString() } },
+    { id: 'c2', alias: 'GLM', proveedor: 'Claude', tipo: 'Api', catalogo: 'zai', catalogoNombre: 'GLM · Z.ai (internacional)', modelo: 'glm-5.3[1m]', autorizada: true, listo: true,
+      gastoMes: 16.4, moneda: 'USD', limites: { umbral5h: 92, umbralSemana: 95, presupuesto: 20 } },
+    { id: 'c3', alias: 'Codex · Empresa', proveedor: 'Codex', tipo: 'Login', autorizada: false, listo: true, sinMargen: 'no está autorizada o falta su agente' },
+    { id: 'c4', alias: 'Gemini API', proveedor: 'Gemini', tipo: 'Api', autorizada: true, listo: true },
+  ];
+  const sesiones = [
+    { id: 's1', proyectoId: 'p1', titulo: 'Revisar el alta de clientes', carpeta: 'C:\\proyectos\\web', estado: 'PidePermiso', proveedor: 'Claude', cuenta: 'Claude · Personal', cuentaId: 'c5', equipoId: 'e1' },
+    { id: 's3', proyectoId: 'p1', titulo: 'Maquetar la portada', carpeta: 'C:\\proyectos\\web', estado: 'Cerrada', proveedor: 'Codex', cuenta: 'Codex · Empresa', cuentaId: 'c3' },
+    { id: 's4', proyectoId: null, titulo: 'Pruebas sueltas', carpeta: 'C:\\tmp', estado: 'Cerrada', proveedor: 'Gemini', cuenta: 'Gemini API', cuentaId: 'c4' },
+    { id: 's2', proyectoId: 'p2', titulo: 'Informe de nóminas en PDF', carpeta: 'C:\\proyectos\\laboral', estado: 'Esperando', proveedor: 'Claude', cuenta: 'GLM', cuentaId: 'c2' },
+  ];
+  const proyectos = [
+    { id: 'p1', nombre: 'Web de clientes', ruta: 'C:\\proyectos\\web' },
+    { id: 'p2', nombre: 'laboral', ruta: 'C:\\proyectos\\laboral' },
+    { id: 'p3', nombre: 'Ideas', ruta: 'C:\\proyectos\\web' },
+  ];
+  const DIF = '@@ -12,7 +12,9 @@ namespace Web.Clientes;\n public static class Validacion\n {\n-    public static bool ValidarNif(string doc)\n-        => EsNif(doc);\n+    /// <summary>NIF, NIE o pasaporte.</summary>\n+    public static bool ValidarDocumento(string doc)\n+        => EsNif(doc) || EsNie(doc) || EsPasaporte(doc);\n \n     private static bool EsNif(string d) => d.Length == 9;\n }\n';
+  for (const c of cuentas) c.limites = c.limites || { umbral5h: 92, umbralSemana: 95, presupuesto: null };
+  const estado = () => ({
+    tipo: 'estado', version: '0.2.0', raiz: 'C:\\MultiAgente', puedeInstalar: true,
+    requisitos: [
+      { id: 'node', nombre: 'Node.js', proveedor: null, encontrado: true, version: '24.14.1' },
+      { id: 'claude', nombre: 'Claude Code', proveedor: 'Claude', encontrado: true, version: '2.1.304' },
+      { id: 'claude-agent-acp', nombre: 'Adaptador ACP de Claude', proveedor: 'Claude', encontrado: true, version: '0.94.0' },
+      { id: 'codex', nombre: 'Codex CLI', proveedor: 'Codex', encontrado: true, version: '0.163.0' },
+      { id: 'codex-acp', nombre: 'Adaptador ACP de Codex', proveedor: 'Codex', encontrado: true, version: '2.2.2' },
+      { id: 'gemini', nombre: 'Gemini CLI', proveedor: 'Gemini', encontrado: true, version: '0.64.0' },
+    ],
+    proveedores: [
+      { id: 'Claude', nombre: 'Claude', listo: true, dondeClave: 'https://console.anthropic.com' },
+      { id: 'Codex', nombre: 'Codex', listo: true, dondeClave: 'https://platform.openai.com/api-keys' },
+      { id: 'Gemini', nombre: 'Gemini', listo: true, dondeClave: 'https://aistudio.google.com/apikey' },
+    ],
+    catalogo: { version: catalogo.version, proveedores: catalogo.proveedores.map((p) => ({ ...p, listar: !!p.listar })) },
+    cuentas,
+    resumenVivo: true,
+    equipos: [
+      { id: 'e1', nombre: 'Principal', regla: 'Prioridad', permiteOtroProveedor: true, cuentaAtras: 60, predeterminado: true, miembros: ['c1', 'c5', 'c2', 'c4'] },
+      { id: 'e2', nombre: 'Solo Claude', regla: 'MenosUsada', permiteOtroProveedor: false, cuentaAtras: 30, predeterminado: false, miembros: ['c1', 'c5'] },
+    ],
+    proyectos: proyectos.map((p) => ({ ...p, sesiones: sesiones.filter((x) => x.proyectoId === p.id) })),
+    sueltas: sesiones.filter((x) => !proyectos.some((p) => p.id === x.proyectoId)),
+  });
+  const opciones = [
+    { id: 'mode', category: 'mode', currentValue: 'default', options: ['default', 'acceptEdits', 'plan', 'auto', 'bypassPermissions'].map((v) => ({ value: v, name: v })) },
+    { id: 'model', category: 'model', currentValue: 'default', options: [{ value: 'default', name: 'Default' }, { value: 'opus', name: 'Opus 5.5' }, { value: 'sonnet', name: 'Sonnet 5.5' }, { value: 'haiku', name: 'Haiku 5.5' }] },
+    { id: 'effort', category: 'thought_level', currentValue: 'high', options: ['default', 'low', 'medium', 'high', 'xhigh', 'max'].map((v) => ({ value: v, name: v })) },
+  ];
+  const agente = (extra) => ({
+    estado: 'Esperando', opciones, cola: [], error: null, admiteImagenes: true, contexto: { usado: 128400, tamano: 200000 },
+    comandos: [{ name: 'review', description: 'Revisa los cambios pendientes' }, { name: 'compact', description: 'Compacta la conversación' }, { name: 'init', description: 'Crea el CLAUDE.md del proyecto' }],
+    cuenta: { id: 'c1', alias: 'Claude · Trabajo', proveedor: 'Claude', tipo: 'Login' }, ...extra,
+  });
+  const entradas = [
+    { id: 'e1', tipo: 'usuario', texto: 'El alta de clientes falla con NIF extranjeros. Te dejo una captura del error y el fichero de log.',
+      adjuntos: [{ ruta: 'C:\\MultiAgente\\datos\\adjuntos\\s1\\captura.png', nombre: 'captura.png', tipo: 'image/png', esImagen: true, url: PNG },
+                 { ruta: 'C:\\proyectos\\web\\logs\\alta.log', nombre: 'alta.log', tipo: 'text/plain', esImagen: false }] },
+    { id: 'e2', tipo: 'pensamiento', texto: 'Primero miro la validación del NIF y después el log.' },
+    { id: 'e3', tipo: 'herramienta', titulo: 'Leer src/Clientes/Validacion.cs', clase: 'read', estado: 'completed', ubicaciones: [{ path: 'C:\\proyectos\\web\\src\\Clientes\\Validacion.cs' }] },
+    { id: 'e4', tipo: 'herramienta', titulo: 'Buscar «ValidarNif»', clase: 'search', estado: 'completed' },
+    { id: 'e5', tipo: 'plan', pasos: [{ content: 'Localizar la validación', status: 'completed' }, { content: 'Aceptar NIE y documentos extranjeros', status: 'in_progress' }, { content: 'Añadir pruebas', status: 'pending' }] },
+    { id: 'e6', tipo: 'agente', texto: 'El fallo está en `ValidarNif`: solo acepta el formato **español** (8 cifras y letra).\n\nPropongo este cambio:\n\n```csharp\npublic static bool ValidarDocumento(string doc) =>\n    EsNif(doc) || EsNie(doc) || EsPasaporte(doc);\n```\n\n| Documento | Hoy | Después |\n|---|---|---|\n| NIF | ✓ | ✓ |\n| NIE | ✗ | ✓ |' },
+    { id: 'e6b', tipo: 'aviso', nivel: 'limite', texto: 'La cuenta «Claude · Trabajo» ha llegado a su límite de uso.' },
+    { id: 'e6c', tipo: 'relevo', cuenta: 'Claude · Personal', texto: 'Sigue en «Claude · Personal»: «Claude · Trabajo» ha llegado a su límite de uso' },
+    { id: 'e6d', tipo: 'usuario', texto: 'Continúa donde lo dejaste.' },
+    { id: 'e7', tipo: 'herramienta', titulo: 'Editar src/Clientes/Validacion.cs', clase: 'edit', estado: 'pending',
+      contenido: [{ type: 'diff', path: 'C:\\proyectos\\web\\src\\Clientes\\Validacion.cs', oldText: 'public static bool ValidarNif(string doc)\n    => EsNif(doc);\n', newText: 'public static bool ValidarDocumento(string doc)\n    => EsNif(doc) || EsNie(doc) || EsPasaporte(doc);\n' }] },
+  ];
+  let n = 100;
+  const atender = (m) => {
+    switch (m.tipo) {
+      case 'listo': case 'recomprobar': emitir(estado()); break;
+      case 'abrirSesion':
+        if (m.id === 's1') emitir({ tipo: 'conversacion', sesionId: 's1', entradas, agente: agente({ estado: 'PidePermiso', cola: ['y después revisa también los tests'],
+          permiso: { id: 'p1', titulo: 'Editar src/Clientes/Validacion.cs', clase: 'edit', opciones: [{ optionId: 'a', name: 'Permitir', kind: 'allow_once' }, { optionId: 'b', name: 'Permitir siempre', kind: 'allow_always' }, { optionId: 'c', name: 'Rechazar', kind: 'reject_once' }] } }) });
+        if (m.id === 's1') emitir({ tipo: 'relevo', sesionId: 's1', relevo: { de: 'Claude · Personal', a: 'GLM', motivo: '«Claude · Personal» está al 93 % del bloque de 5 horas', segundos: 42, esperaTurno: true } });
+        else emitir({ tipo: 'conversacion', sesionId: m.id, entradas: [{ id: 'x1', tipo: 'usuario', texto: 'Genera el informe de nóminas' }, { id: 'x2', tipo: 'aviso', nivel: 'limite', texto: 'La cuenta «GLM» ha llegado a su límite de uso.' }],
+          agente: agente({ cuenta: { id: 'c2', alias: 'GLM', proveedor: 'Claude', tipo: 'Api' }, opciones: [opciones[0]] }) });
+        break;
+      case 'permiso':
+        emitir({ tipo: 'agente', sesionId: 's1', agente: agente({ estado: 'Trabajando' }) });
+        emitir({ tipo: 'entrada', sesionId: 's1', entrada: { ...entradas[6], estado: 'completed' } });
+        setTimeout(() => {
+          emitir({ tipo: 'entrada', sesionId: 's1', entrada: { id: 'e8', tipo: 'agente', texto: 'Hecho: ahora se aceptan NIE y pasaportes.' } });
+          emitir({ tipo: 'agente', sesionId: 's1', agente: agente({}) });
+        }, 800);
+        break;
+      case 'enviar': {
+        const id = 'u' + n++;
+        emitir({ tipo: 'entrada', sesionId: m.sesionId, entrada: { id, tipo: 'usuario', texto: m.texto, adjuntos: m.adjuntos.map((a) => ({ ...a, tipo: 'image/png', esImagen: true, url: PNG })) } });
+        emitir({ tipo: 'agente', sesionId: m.sesionId, agente: agente({ estado: 'Trabajando' }) });
+        const resp = 'r' + n++;
+        let texto = '';
+        const trozos = ['Vale, ', 'me pongo ', 'con ello: **', m.texto, '**.'];
+        trozos.forEach((t, i) => setTimeout(() => {
+          texto += t;
+          emitir({ tipo: 'entrada', sesionId: m.sesionId, entrada: { id: resp, tipo: 'agente', texto } });
+          if (i === trozos.length - 1) emitir({ tipo: 'agente', sesionId: m.sesionId, agente: agente({}) });
+        }, 250 * (i + 1)));
+        break;
+      }
+      case 'pegar': case 'soltar': case 'elegirFicheros':
+        emitir({ tipo: 'adjuntos', adjuntos: [{ ruta: 'C:\\MultiAgente\\datos\\adjuntos\\nuevas\\captura_2.png', nombre: 'captura_2.png', tipo: 'image/png', esImagen: true, url: PNG }] });
+        break;
+      case 'elegirCarpeta': emitir({ tipo: 'carpeta', para: m.para, ruta: 'C:\\proyectos\\web' }); break;
+      case 'modelos': setTimeout(() => emitir({ tipo: 'modelos', para: m.para, modelos: [{ id: 'glm-5.3' }, { id: 'glm-5.3-flash' }, { id: 'glm-5.3[1m]' }] }), 400); break;
+      case 'cuentaNueva': emitir({ tipo: 'cuentaCreada' }); break;
+      case 'extensiones': case 'mcpImportar': case 'extImportar': case 'pluginActivar': case 'mcpActivar':
+        emitir({ tipo: 'extensiones',
+          mcp: [
+            { id: 'm1', nombre: 'github', tipo: 'stdio', comando: 'npx', argumentos: ['-y', '@modelcontextprotocol/server-github'], activo: true, origen: 'importado de ~/.claude.json (Claude Code)',
+              valores: [{ nombre: 'GITHUB_TOKEN', secreto: true, guardado: true }] },
+            { id: 'm2', nombre: 'docs-empresa', tipo: 'http', url: 'https://mcp.ejemplo.com/mcp', activo: true, valores: [{ nombre: 'Authorization', secreto: true, guardado: false }], problema: 'falta el valor de Authorization' },
+            { id: 'm3', nombre: 'playwright', tipo: 'stdio', comando: 'npx', argumentos: ['@playwright/mcp@latest'], activo: false, valores: [] },
+          ],
+          skills: { carpeta: 'C:\\MultiAgente\\datos\\comun\\skills', elementos: [
+            { nombre: 'revisar-codigo', descripcion: 'Revisa los cambios antes de un commit', ruta: 'x' },
+            { nombre: 'informe-pdf', descripcion: 'Genera informes en PDF con la plantilla de la empresa', ruta: 'y' } ] },
+          carpetas: [
+            { clave: 'ordenes-claude', proveedor: 'Claude', titulo: 'Órdenes de Claude Code (/orden)', carpeta: 'c', elementos: [{ nombre: 'git:commit', descripcion: 'Hace un commit con mensaje en castellano', ruta: 'z' }] },
+            { clave: 'agentes-claude', proveedor: 'Claude', titulo: 'Subagentes de Claude Code', carpeta: 'd', elementos: [] },
+            { clave: 'prompts-codex', proveedor: 'Codex', titulo: 'Prompts de Codex (/prompts:nombre)', carpeta: 'e', elementos: [] },
+          ],
+          plugins: [{ id: 'revisor@ejemplo', nombre: 'revisor', tienda: 'ejemplo', version: '1.2.0', activo: true }, { id: 'diseno@claude', nombre: 'diseno', tienda: 'claude', activo: false }],
+          instrucciones: 'Responde siempre en castellano.\nAntes de dar algo por hecho, pruébalo.' });
+        break;
+      case 'mcpImportables':
+        emitir({ tipo: 'mcpImportables', servidores: [
+          { nombre: 'context7', tipo: 'http', url: 'https://mcp.context7.com/mcp', origen: '~/.gemini/settings.json (Gemini)' },
+          { nombre: 'postgres', tipo: 'stdio', comando: 'uvx', argumentos: ['mcp-postgres'], origen: '~/.codex/config.toml (Codex)' } ] });
+        break;
+      case 'estadisticas': {
+        const dias = m.dias, hoy = new Date();
+        const porDia = Array.from({ length: dias }, (_, i) => {
+          const d = new Date(hoy); d.setDate(hoy.getDate() - (dias - 1 - i));
+          const tokens = Math.round(20000 + 60000 * Math.abs(Math.sin(i * 1.7)));
+          return { dia: d.toISOString().slice(0, 10), datos: { turnos: Math.round(tokens / 4000), tokens, coste: tokens / 90000, moneda: 'USD' } };
+        });
+        emitir({ tipo: 'estadisticas', dias, total: { turnos: 214, tokens: 1840000, coste: 18.6, moneda: 'USD' },
+          porCuenta: [
+            { cuenta: 'Claude · Personal', proveedor: 'Claude', datos: { turnos: 120, tokens: 1100000, coste: null } },
+            { cuenta: 'GLM', proveedor: 'Claude', catalogo: 'zai', datos: { turnos: 71, tokens: 610000, coste: 16.4, moneda: 'USD' } },
+            { cuenta: 'Gemini API', proveedor: 'Gemini', datos: { turnos: 23, tokens: 130000, coste: 2.2, moneda: 'USD' } } ],
+          porSesion: [
+            { id: 's1', titulo: 'Revisar el alta de clientes', cuentas: ['Claude · Personal', 'GLM'], datos: { turnos: 88, tokens: 920000, coste: 9.1, moneda: 'USD' } },
+            { id: 's2', titulo: 'Informe de nóminas en PDF', cuentas: ['GLM'], datos: { turnos: 41, tokens: 400000, coste: 7.3, moneda: 'USD' } } ],
+          porDia });
+        break;
+      }
+      case 'relevoCancelar': case 'relevoYa': emitir({ tipo: 'relevo', sesionId: m.sesionId, relevo: null }); break;
+      case 'equipoGuardar': case 'equipoBorrar': case 'ajuste': emitir(estado()); break;
+      case 'cambios':
+        setTimeout(() => emitir({ tipo: 'cambios', sesionId: m.sesionId, git: m.sesionId !== 's2', raiz: 'C:\\proyectos\\web', rama: 'main', recortado: false,
+          ficheros: m.sesionId === 's2' ? [] : [
+            { ruta: 'src\\Clientes\\Validacion.cs', estado: 'M', mas: 3, menos: 2, binario: false },
+            { ruta: 'src\\Clientes\\Alta.cs', estado: 'M', mas: 14, menos: 6, binario: false },
+            { ruta: 'tests\\ValidacionTests.cs', estado: '?', mas: 42, menos: 0, binario: false },
+            { ruta: 'docs\\viejo.md', estado: 'D', mas: 0, menos: 18, binario: false },
+            { ruta: 'img\\logo.png', estado: 'M', mas: null, menos: null, binario: true },
+          ] }), 150);
+        break;
+      case 'cambioFichero':
+        setTimeout(() => emitir({ tipo: 'cambioFichero', sesionId: m.sesionId, ruta: m.ruta, texto: m.ruta.endsWith('.png') ? '' : DIF, binario: m.ruta.endsWith('.png'), recortado: false }), 150);
+        break;
+      case 'sesionMover': sesiones.find((x) => x.id === m.sesionId).proyectoId = m.proyectoId; emitir(estado()); break;
+      case 'sesionRenombrar': sesiones.find((x) => x.id === m.sesionId).titulo = m.titulo; emitir(estado()); break;
+      case 'proyectoGuardar': {
+        let p = proyectos.find((x) => x.id === m.id);
+        if (!p) { p = { id: 'p' + Date.now() }; proyectos.push(p); }
+        p.nombre = m.nombre; p.ruta = m.ruta;
+        emitir(estado());
+        emitir({ tipo: 'proyectoGuardado', id: p.id, nuevo: !m.id });
+        break;
+      }
+      case 'proyectoBorrar': proyectos.splice(proyectos.findIndex((x) => x.id === m.id), 1); emitir(estado()); break;
+      case 'consumoActualizar': setTimeout(() => emitir(estado()), 600); break;
+      case 'sesionNueva': emitir({ tipo: 'sesionAbierta', id: 's1' }); break;
+      default: console.log('simulado: sin respuesta para', m);
+    }
+  };
+  window.chrome = { webview: {
+    addEventListener: (t, f) => oyentes.push(f),
+    postMessage: (m) => setTimeout(() => atender(m), 20),
+    postMessageWithAdditionalObjects: (m) => setTimeout(() => atender(m), 20),
+  } };
+  for (const s of doc.querySelectorAll('script[src]')) {
+    await new Promise((ok, mal) => {
+      const n = document.createElement('script');
+      n.src = base + s.getAttribute('src') + '?v=' + Date.now(); n.onload = ok; n.onerror = mal;
+      document.body.append(n);
+    });
+  }
+})();
+</script>
+</body>
+</html>
