@@ -67,7 +67,28 @@ const ESTADOS = {
   Cerrada: 'Cerrada', Arrancando: 'Arrancando…', Esperando: 'Esperándote', Trabajando: 'Trabajando…',
   PidePermiso: 'Pide permiso', Error: 'Con error',
 };
-const ICONOS = { read: '📖', edit: '✎', delete: '🗑', move: '↔', search: '🔍', execute: '▶', think: '💭', fetch: '🌐', switch_mode: '⇄' };
+const ICONOS = { read: 'leer', edit: 'editar', delete: 'borrar', move: 'mover', search: 'buscar', execute: 'ejecutar', think: 'pensar', fetch: 'red', switch_mode: 'modo' };
+
+// Icono del juego propio (sprite en index.html): <svg class="i"><use href="#i-nombre"/></svg>
+function icono(nombre, clase) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const s = document.createElementNS(ns, 'svg');
+  s.setAttribute('class', 'i' + (clase ? ' ' + clase : ''));
+  s.setAttribute('aria-hidden', 'true');
+  const u = document.createElementNS(ns, 'use');
+  u.setAttribute('href', '#i-' + nombre);
+  s.append(u);
+  return s;
+}
+
+// Botón solo con icono: el nombre va en el título y para los lectores de pantalla
+function botonIcono(nombre, titulo, clase) {
+  const b = el('button', clase || '');
+  b.title = titulo;
+  b.setAttribute('aria-label', titulo);
+  b.append(icono(nombre));
+  return b;
+}
 const ESTADO_HERR = { pending: 'pendiente', in_progress: 'en curso', completed: 'hecho', failed: 'falló' };
 
 function nombreOpcion(opcion, valor) {
@@ -167,7 +188,8 @@ function botonSesion(s) {
   const cuenta = S.estado.cuentas.find((c) => c.alias === s.cuenta);
   const p = el('span', 'punto ' + claseProveedor(cuenta));
   p.title = s.cuenta || '';
-  const mas = el('span', 'mas-ses', '⋯');
+  const mas = el('span', 'mas-ses');
+  mas.append(icono('puntos'));
   mas.title = 'Opciones de la sesión';
   mas.addEventListener('click', (e) => { e.stopPropagation(); menuSesion(s, mas); });
   b.append(p, mas);
@@ -190,17 +212,17 @@ function plegados() {
 function grupoProyecto(p, sesiones, pleg) {
   const clave = p ? p.id : 'sueltas';
   const plegado = pleg.has(clave);
-  const t = el('div', 'proyecto');
+  const t = el('div', 'proyecto' + (plegado ? '' : ' abierto'));
   t.title = p ? p.ruta : 'Sesiones que no están en ningún proyecto';
-  t.append(el('span', 'flecha', plegado ? '▸' : '▾'), el('span', 'n', p ? p.nombre : 'Sin proyecto'));
+  const flecha = el('span', 'flecha');
+  flecha.append(icono('chevron'));
+  t.append(flecha, el('span', 'n', p ? p.nombre : 'Sin proyecto'));
   if (plegado && sesiones.length) t.append(el('span', 'cuantas', String(sesiones.length)));
   if (p) {
     const acc = el('span', 'acc');
-    const nueva = el('button', '', '＋');
-    nueva.title = 'Nueva sesión en este proyecto';
+    const nueva = botonIcono('mas', 'Nueva sesión en este proyecto');
     nueva.addEventListener('click', (e) => { e.stopPropagation(); nuevaEnProyecto(p); });
-    const mas = el('button', '', '⋯');
-    mas.title = 'Opciones del proyecto';
+    const mas = botonIcono('puntos', 'Opciones del proyecto');
     mas.addEventListener('click', (e) => { e.stopPropagation(); menuProyecto(p, mas); });
     acc.append(nueva, mas);
     t.append(acc);
@@ -282,7 +304,9 @@ function pintarInicio() {
     const ul = el('ul');
     for (const r of reqs) {
       const li = el('li');
-      li.append(el('span', r.encontrado ? 'ok' : 'falta', r.encontrado ? '✓' : '✗'), el('span', '', r.nombre),
+      const marca = el('span', r.encontrado ? 'ok' : 'falta');
+      marca.append(icono(r.encontrado ? 'hecho' : 'cerrar'));
+      li.append(marca, el('span', '', r.nombre),
                 el('span', 'v', r.encontrado ? (r.version || 'instalado') : 'no está'));
       ul.append(li);
     }
@@ -454,7 +478,7 @@ function pintarRelevo() {
     d.append(el('span', '', `${r.motivo}, y ninguna cuenta del equipo tiene margen ahora. La sesión sigue con «${r.de}».`), b);
   } else {
     const t = el('span');
-    t.append(document.createTextNode(`⇄ ${r.motivo} → sigue en «${r.a}» `));
+    t.append(icono('modo'), document.createTextNode(` ${r.motivo} → sigue en «${r.a}» `));
     const reloj = el('span', 'reloj', r.segundos > 0 ? `en ${r.segundos} s` : 'ahora');
     t.append(reloj, document.createTextNode(r.esperaTurno ? ', al terminar el turno' : ''));
     const ya = el('button', 'boton fino prim', 'Cambiar ya');
@@ -552,7 +576,7 @@ function chipAdjunto(a, alQuitar) {
     n.append(el('small', '', a.nombre));
   } else {
     n = el('div', 'fich');
-    n.append(el('span', '', (a.tipo === 'inode/directory' ? '📁 ' : '📄 ') + a.nombre));
+    n.append(icono(a.tipo === 'inode/directory' ? 'carpeta' : 'fichero'), el('span', '', a.nombre));
   }
   n.title = a.ruta;
   if (alQuitar) {
@@ -637,7 +661,9 @@ function nodoEntrada(e) {
     case 'herramienta': {
       n = el('details', 'herr');
       const s = el('summary');
-      s.append(el('span', 'ic', ICONOS[e.clase] || '•'), el('span', 'tt', e.titulo || 'Herramienta'),
+      const ic = el('span', 'ic');
+      ic.append(icono(ICONOS[e.clase] || 'herramienta'));
+      s.append(ic, el('span', 'tt', e.titulo || 'Herramienta'),
                el('span', 'st ' + (e.estado || ''), ESTADO_HERR[e.estado] || ''));
       n.append(s);
       n.addEventListener('toggle', () => {
@@ -650,8 +676,9 @@ function nodoEntrada(e) {
       n.append(el('b', '', 'Tareas'));
       const ul = el('ul');
       for (const p of e.pasos || []) {
-        const marca = p.status === 'completed' ? '☑' : p.status === 'in_progress' ? '◐' : '☐';
-        ul.append(el('li', p.status || '', `${marca} ${p.content}`));
+        const li = el('li', p.status || '');
+        li.append(icono(p.status === 'completed' ? 'hecho' : p.status === 'in_progress' ? 'encurso' : 'pendiente'), el('span', '', p.content));
+        ul.append(li);
       }
       n.append(ul);
       break;
@@ -953,7 +980,7 @@ function pintarCuentas() {
     const uso = textoUso(c);
     if (uso.texto) n.append(el('span', 'uso' + (uso.agotada ? ' agotada' : ''), uso.texto));
     const t = el('span', 't');
-    t.append(!c.listo ? el('span', 'falta', '● Falta instalar el agente') : c.problema ? el('span', 'falta', '● ' + c.problema) : c.autorizada ? el('span', 'ok', c.tipo === 'Api' ? '● Clave guardada' : '● Autorizada') : el('span', 'falta', '● Falta autorizar'));
+    t.append(!c.listo ? el('span', 'falta', 'Falta instalar el agente') : c.problema ? el('span', 'falta', c.problema) : c.autorizada ? el('span', 'ok', c.tipo === 'Api' ? 'Clave guardada' : 'Autorizada') : el('span', 'falta', 'Falta autorizar'));
     const acc = el('span', 'acc');
     if (c.tipo === 'Login') {
       const b = el('button', 'boton fino' + (c.autorizada ? '' : ' prim'), c.autorizada ? 'Volver a autorizar…' : 'Autorizar…');
@@ -1124,9 +1151,9 @@ function tarjetaEquipo(eq) {
       if (uso.texto) f.append(el('span', 'tenue', uso.texto));
       if (dentro) {
         const i = orden.indexOf(id);
-        const sube = el('button', '', '▲'); sube.title = 'Subir'; sube.disabled = i === 0;
+        const sube = botonIcono('chevron', 'Subir', 'sube'); sube.disabled = i === 0;
         sube.addEventListener('click', () => { [orden[i - 1], orden[i]] = [orden[i], orden[i - 1]]; pintarMiembros(); });
-        const baja = el('button', '', '▼'); baja.title = 'Bajar'; baja.disabled = i === orden.length - 1;
+        const baja = botonIcono('chevron', 'Bajar', 'baja'); baja.disabled = i === orden.length - 1;
         baja.addEventListener('click', () => { [orden[i + 1], orden[i]] = [orden[i], orden[i + 1]]; pintarMiembros(); });
         f.append(sube, baja);
       }
@@ -1831,8 +1858,11 @@ function cifras(mas, menos, binario) {
 
 function cabFichero(clave, ruta, etiqueta, mas, menos, binario, alAbrir) {
   const abierto = PC.abiertos.has(clave);
-  const cab = el('button', 'pc-cab');
-  cab.append(el('span', 'flecha', abierto ? '▾' : '▸'), etiqueta, nombreRuta(ruta), cifras(mas, menos, binario));
+  const cab = el('button', 'pc-cab' + (abierto ? ' abierto' : ''));
+  cab.setAttribute('aria-expanded', String(abierto));
+  const flecha = el('span', 'flecha');
+  flecha.append(icono('chevron'));
+  cab.append(flecha, etiqueta, nombreRuta(ruta), cifras(mas, menos, binario));
   cab.addEventListener('click', () => {
     if (PC.abiertos.has(clave)) PC.abiertos.delete(clave);
     else { PC.abiertos.add(clave); if (alAbrir) alAbrir(); }
