@@ -104,7 +104,7 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             // ----- carpetas y adjuntos
             case "elegirCarpeta":
             {
-                using var d = new FolderBrowserDialog { Description = "Carpeta de trabajo de la sesión", UseDescriptionForTitle = true, ShowNewFolderButton = true };
+                using var d = new FolderBrowserDialog { Description = Texto(m, "titulo") ?? "Carpeta de trabajo de la sesión", UseDescriptionForTitle = true, ShowNewFolderButton = true };
                 if (Texto(m, "inicial") is { } ini && Directory.Exists(ini)) d.InitialDirectory = ini;
                 if (d.ShowDialog(ventana) == DialogResult.OK)
                     ventana.Enviar(new { tipo = "carpeta", para = Texto(m, "para"), ruta = d.SelectedPath });
@@ -112,7 +112,7 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             }
             case "elegirFicheros":
             {
-                using var d = new OpenFileDialog { Multiselect = true, Title = "Adjuntar ficheros" };
+                using var d = new OpenFileDialog { Multiselect = true, Title = Texto(m, "titulo") ?? "Adjuntar ficheros" };
                 if (d.ShowDialog(ventana) == DialogResult.OK)
                     EnviarAdjuntos(d.FileNames.Select(Gestor.DeRuta));
                 break;
@@ -239,12 +239,17 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
                 var clave = Texto(m, "clave") ?? "";
                 if (clave == "skills")
                 {
-                    using var d = new FolderBrowserDialog { Description = "Carpeta de la skill (con su SKILL.md)", UseDescriptionForTitle = true };
+                    using var d = new FolderBrowserDialog { Description = Texto(m, "titulo") ?? "Carpeta de la skill (con su SKILL.md)", UseDescriptionForTitle = true };
                     if (d.ShowDialog(ventana) == DialogResult.OK) servicio.ImportarExtensiones(clave, [d.SelectedPath]);
                 }
                 else
                 {
-                    using var d = new OpenFileDialog { Multiselect = true, Title = "Añadir ficheros", Filter = "Órdenes y agentes (*.md;*.toml)|*.md;*.toml" };
+                    using var d = new OpenFileDialog
+                    {
+                        Multiselect = true, Title = Texto(m, "titulo") ?? "Añadir ficheros",
+                        // la barra separa las partes del filtro: no puede venir en el nombre
+                        Filter = $"{(Texto(m, "filtro") ?? "Órdenes y agentes").Replace("|", "")} (*.md;*.toml)|*.md;*.toml",
+                    };
                     if (d.ShowDialog(ventana) == DialogResult.OK) servicio.ImportarExtensiones(clave, d.FileNames);
                 }
                 break;

@@ -900,11 +900,11 @@ function crearCaja(contenedor, modo) {
   c.ta.addEventListener('input', () => { ajustarAlto(c); pintarOrdenes(c); });
   c.ta.addEventListener('keydown', (e) => teclaCaja(c, e));
   c.ta.addEventListener('paste', (e) => pegar(c, e));
-  c.mas.addEventListener('click', () => { activar(); enviar({ tipo: 'elegirFicheros' }); });
+  c.mas.addEventListener('click', () => { activar(); enviar({ tipo: 'elegirFicheros', titulo: trad('Adjuntar ficheros') }); });
   c.enviarBtn.addEventListener('click', () => enviarDesde(c));
   c.parar.addEventListener('click', () => enviar({ tipo: 'interrumpir', sesionId: S.actual }));
   if (modo === 'nueva') {
-    c.carpetaBtn.addEventListener('click', () => enviar({ tipo: 'elegirCarpeta', para: 'nueva', inicial: S.nueva.carpeta }));
+    c.carpetaBtn.addEventListener('click', () => enviar({ tipo: 'elegirCarpeta', para: 'nueva', inicial: S.nueva.carpeta, titulo: trad('Carpeta de trabajo de la sesión') }));
     c.proyectos.addEventListener('change', () => {
       const p = S.estado.proyectos.find((x) => x.id === c.proyectos.value);
       if (p) { S.nueva.carpeta = p.ruta; S.nueva.proyectoId = p.id; pintarCamposNueva(); }
@@ -2360,7 +2360,7 @@ $('imImportar').addEventListener('click', () => {
   $('imError').hidden = true;
   enviar({ tipo: 'historialesImportar', claves: [...IM.marcadas] });
 });
-$('dpElegir').addEventListener('click', () => enviar({ tipo: 'elegirCarpeta', para: 'proyecto', inicial: $('dpRuta').value }));
+$('dpElegir').addEventListener('click', () => enviar({ tipo: 'elegirCarpeta', para: 'proyecto', inicial: $('dpRuta').value, titulo: trad('Carpeta del proyecto') }));
 $('dpGuardar').addEventListener('click', guardarProyecto);
 $('dpCancelar').addEventListener('click', () => $('dlgProyecto').close());
 $('dpNombre').addEventListener('keydown', (e) => { if (e.key === 'Enter') guardarProyecto(); });
@@ -2405,7 +2405,8 @@ $('vExtensiones').addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b || !ext) return;
   if (b.dataset.importar) enviar({ tipo: 'extImportables', clave: b.dataset.importar });
-  else if (b.dataset.anadir) enviar({ tipo: 'extAnadir', clave: b.dataset.anadir });
+  else if (b.dataset.anadir) enviar({ tipo: 'extAnadir', clave: b.dataset.anadir, filtro: trad('Órdenes y agentes'),
+    titulo: b.dataset.anadir === 'skills' ? trad('Carpeta de la skill (con su SKILL.md)') : trad('Añadir ficheros') });
   else if (b.dataset.carpeta) enviar({ tipo: 'abrirRuta', ruta: carpetaDe(b.dataset.carpeta) });
 });
 $('instrTexto').addEventListener('input', () => { instrTocadas = true; });

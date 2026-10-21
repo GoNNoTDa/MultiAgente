@@ -73,7 +73,8 @@ Plan: `Documentacion/MultiAgente_Plan.md` (leer antes de seguir) · Maqueta: `Do
   - [x] Interfaz en castellano, inglés y catalán (`ui/idiomas.js`, `ui/idiomas/en.js` y `ca.js`); selector abajo del lateral; la primera vez, el idioma de Windows
   - [x] Los mensajes del núcleo llegan en castellano y la interfaz los traduce, también los que llevan datos (patrones)
   - [x] Pruebas: 104 (`IdiomasTests`: ningún texto sin traducir y los mismos datos en cada traducción)
-  - [ ] Siguen en castellano: los diálogos de Windows para elegir carpeta y los errores de arranque (antes de abrir la ventana)
+  - [x] Diálogos de Windows para elegir carpeta o ficheros: el título llega ya traducido desde la interfaz
+  - [ ] Siguen en castellano los errores de arranque (antes de abrir la ventana)
 - [ ] Prueba con cuentas reales (todo lo que depende de credenciales: login, relevo real, MCP con un servidor de verdad, consumo de Claude, coste que informa cada agente)
 
 ## Decisiones (plan §13)
