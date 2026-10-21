@@ -190,6 +190,7 @@ En **🧩 Extensiones** (lateral) está lo que usan todas tus cuentas. Los cambi
 | Adjuntos y capturas | `datos\adjuntos` |
 | Registro técnico | `datos\logs` |
 | Preferencias de la ventana (idioma, ancho del visor, proyectos plegados…) | `datos\webview` |
+| Idioma para los avisos que salen antes de abrir la ventana | `datos\idioma.txt` |
 
 **No uses la misma carpeta en dos PCs a la vez**: al renovarse un inicio de sesión en uno, el otro puede perderlo.
 Copiar es mudarse.

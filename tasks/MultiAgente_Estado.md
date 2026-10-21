@@ -74,7 +74,8 @@ Plan: `Documentacion/MultiAgente_Plan.md` (leer antes de seguir) · Maqueta: `Do
   - [x] Los mensajes del núcleo llegan en castellano y la interfaz los traduce, también los que llevan datos (patrones)
   - [x] Pruebas: 104 (`IdiomasTests`: ningún texto sin traducir y los mismos datos en cada traducción)
   - [x] Diálogos de Windows para elegir carpeta o ficheros: el título llega ya traducido desde la interfaz
-  - [ ] Siguen en castellano los errores de arranque (antes de abrir la ventana)
+  - [x] Errores de arranque (antes de abrir la ventana) en el idioma elegido: la interfaz lo guarda en `datos\idioma.txt`; si no hay, el de Windows (`TextosArranque`)
+  - [x] Pruebas: 106
 - [ ] Prueba con cuentas reales (todo lo que depende de credenciales: login, relevo real, MCP con un servidor de verdad, consumo de Claude, coste que informa cada agente)
 
 ## Decisiones (plan §13)

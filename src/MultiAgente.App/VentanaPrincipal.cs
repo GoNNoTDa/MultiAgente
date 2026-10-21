@@ -67,8 +67,7 @@ public partial class VentanaPrincipal : Form
         catch (WebView2RuntimeNotFoundException ex)
         {
             Registro.Error("Falta el runtime de WebView2", ex);
-            MessageBox.Show("Para abrir MultiAgente hace falta WebView2 de Microsoft, que no está en este equipo.\n\n" +
-                            "Instálalo desde https://developer.microsoft.com/microsoft-edge/webview2/ y vuelve a abrir MultiAgente.",
+            MessageBox.Show(TextosArranque.Texto(_rutas, "sinWebView2"),
                             "MultiAgente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             Close();
             return;

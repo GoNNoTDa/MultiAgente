@@ -29,7 +29,7 @@ internal static class Program
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            MessageBox.Show($"MultiAgente no puede escribir en su carpeta:\n{rutas.Raiz}\n\nCópiala a un sitio donde tengas permiso de escritura (por ejemplo, tu carpeta de usuario o C:\\MultiAgente).",
+            MessageBox.Show(TextosArranque.Texto(rutas, "sinPermiso", rutas.Raiz),
                             "MultiAgente", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return 1;
         }
@@ -63,7 +63,7 @@ internal static class Program
         {
             Registro.Error("No se pudo abrir la base de datos", ex);
             if (comprobar < 0)
-                MessageBox.Show($"No se pudo abrir los datos de MultiAgente ({rutas.BaseDatos}).\n\n{ex.Message}",
+                MessageBox.Show(TextosArranque.Texto(rutas, "sinDatos", rutas.BaseDatos, ex.Message),
                                 "MultiAgente", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 1;
         }
@@ -105,7 +105,7 @@ internal static class Program
     private static void Fallo(Exception ex)
     {
         Registro.Error("Error no controlado en la interfaz", ex);
-        MessageBox.Show("Algo ha fallado en MultiAgente. El detalle está en el registro (datos\\logs).",
+        MessageBox.Show(TextosArranque.Texto(Rutas.Actual, "fallo"),
                         "MultiAgente", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 }

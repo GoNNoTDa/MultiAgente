@@ -2428,4 +2428,4 @@ $('selIdioma').addEventListener('change', (e) => { guardarLocal('idioma', e.targ
 
 document.body.classList.toggle('veterano', (Number(leerLocal('enviados')) || 0) >= 3);
 mostrar('inicio');
-enviar({ tipo: 'listo' });
+enviar({ tipo: 'listo', idioma: IDIOMA });

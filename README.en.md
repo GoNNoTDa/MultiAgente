@@ -199,6 +199,7 @@ them to work with Claude Code.
 | Attachments and screenshots | `datos\adjuntos` |
 | Technical log | `datos\logs` |
 | Window preferences (language, viewer width, collapsed projects…) | `datos\webview` |
+| Language for the messages shown before the window opens | `datos\idioma.txt` |
 
 **Don't use the same folder on two PCs at once**: when a sign-in is renewed on one, the other may lose it. Copying is
 moving.

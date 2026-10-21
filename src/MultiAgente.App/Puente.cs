@@ -50,6 +50,7 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             case "listo":
             case "recomprobar":
                 ventana.Enviar(servicio.Estado(recomprobar: tipo == "recomprobar"));
+                if (tipo == "listo") TextosArranque.GuardarIdioma(rutas, Texto(m, "idioma"));
                 if (tipo == "listo" && _primeraVez) { _primeraVez = false; ventana.InterfazLista(); }
                 break;
             case "instalarRequisitos":

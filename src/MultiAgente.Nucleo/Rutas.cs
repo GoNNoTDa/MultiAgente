@@ -27,6 +27,8 @@ public sealed class Rutas
     public string Herramientas => Path.Combine(Raiz, "tools");
     public string Catalogo => Path.Combine(Raiz, "catalogo", "proveedores.json");
     public string Adjuntos => Path.Combine(Datos, "adjuntos");
+    /// <summary>Idioma elegido en la interfaz, para los mensajes que se ven antes de abrirla.</summary>
+    public string Idioma => Path.Combine(Datos, "idioma.txt");
 
     /// <summary>Crea las carpetas de datos que falten.</summary>
     public void CrearCarpetas()
