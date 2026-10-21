@@ -217,7 +217,7 @@ Copiar es mudarse.
 ## Para desarrolladores
 
 - Normas y contexto: [CLAUDE.md](CLAUDE.md). Plan: [Documentacion/MultiAgente_Plan.md](Documentacion/MultiAgente_Plan.md).
-  Estado: [tasks/MultiAgente_Estado.md](tasks/MultiAgente_Estado.md).
+  Estado: [tasks/MultiAgente_Estado.md](tasks/MultiAgente_Estado.md). Qué costaría llevarlo a Mac: [Documentacion/MultiAgente_Mac.md](Documentacion/MultiAgente_Mac.md).
 - Tecnología: anfitrión .NET 10 WinForms con WebView2, interfaz HTML/JS (`src/MultiAgente.App/ui`), SQLite, xUnit. Habla
   con los agentes por el [Agent Client Protocol](https://agentclientprotocol.com) (ACP).
 - Requisitos para compilar: .NET 10 SDK.

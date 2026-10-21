@@ -226,7 +226,7 @@ moving.
 ## For developers
 
 - Rules and context (in Spanish): [CLAUDE.md](CLAUDE.md). Design plan: [Documentacion/MultiAgente_Plan.md](Documentacion/MultiAgente_Plan.md).
-  Status: [tasks/MultiAgente_Estado.md](tasks/MultiAgente_Estado.md).
+  Status: [tasks/MultiAgente_Estado.md](tasks/MultiAgente_Estado.md). What a Mac version would take (in Spanish): [Documentacion/MultiAgente_Mac.md](Documentacion/MultiAgente_Mac.md).
 - Stack: .NET 10 WinForms host with WebView2, HTML/JS interface (`src/MultiAgente.App/ui`), SQLite, xUnit.
 - To build: .NET 10 SDK.
 - Build and test: `dotnet build MultiAgente.sln` · `dotnet test MultiAgente.sln`.
