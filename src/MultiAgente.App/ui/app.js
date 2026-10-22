@@ -278,7 +278,7 @@ function marcaEstado(estado) {
   return el('i', 'est ' + estado);
 }
 
-function botonSesion(s, opciones = {}) {
+function botonSesion(s) {
   const fila = el('div', 'ses-fila');
   const b = el('button', 'ses' + (s.id === S.actual ? ' activa' : ''));
   const estado = estadoDe(s);
@@ -295,16 +295,14 @@ function botonSesion(s, opciones = {}) {
   const mas = botonIcono('puntos', trad('Opciones de «{0}»', s.titulo), 'mas-ses');
   mas.setAttribute('aria-haspopup', 'menu');
   mas.addEventListener('click', (e) => { e.stopPropagation(); menuSesion(s, mas); });
-  if (!opciones.archivada) {
-    fila.draggable = true;
-    fila.addEventListener('dragstart', (e) => {
-      arrastrando = s.id;
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', s.titulo);
-      $('arbol').classList.add('moviendo');
-    });
-    fila.addEventListener('dragend', () => { arrastrando = null; $('arbol').classList.remove('moviendo'); });
-  }
+  fila.draggable = true;
+  fila.addEventListener('dragstart', (e) => {
+    arrastrando = s.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', s.titulo);
+    $('arbol').classList.add('moviendo');
+  });
+  fila.addEventListener('dragend', () => { arrastrando = null; $('arbol').classList.remove('moviendo'); });
   fila.append(b, mas);
   return fila;
 }
@@ -353,7 +351,7 @@ function grupoProyecto(p, sesiones, pleg) {
     if (!arrastrando) return;
     e.preventDefault();
     const s = todasLasSesiones().find((x) => x.id === arrastrando);
-    if (s && (s.proyectoId || null) !== (p ? p.id : null)) enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: p ? p.id : null });
+    if (s && (s.archivada || (s.proyectoId || null) !== (p ? p.id : null))) moverSesion(s, p);
     arrastrando = null;
   });
   const nodos = [t];
@@ -396,11 +394,11 @@ function pintarArbol() {
     a.append(t);
     if (abierta)
       for (const x of archivadas) {
-        const f = botonSesion(x, { archivada: true });
+        const f = botonSesion({ ...x, archivada: true });
         f.classList.add('archivada');
         const r = botonIcono('restaurar', trad('Restaurar «{0}»', x.titulo), 'mas-ses restaurar');
-        r.addEventListener('click', (e) => { e.stopPropagation(); enviar({ tipo: 'desarchivar', sesionId: x.id }); aviso(trad('«{0}» vuelve a su proyecto.', x.titulo)); });
-        f.querySelector('.mas-ses').replaceWith(r);
+        r.addEventListener('click', (e) => { e.stopPropagation(); restaurarSesion(x); });
+        f.querySelector('.mas-ses').before(r);
         a.append(f);
       }
   }
@@ -1869,19 +1867,35 @@ function menuProyecto(p, donde) {
 
 function menuSesion(s, donde) {
   const destinos = S.estado.proyectos.map((p) => ({
-    texto: p.nombre, actual: s.proyectoId === p.id,
-    accion: () => enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: p.id }),
+    texto: p.nombre, actual: !s.archivada && s.proyectoId === p.id, accion: () => moverSesion(s, p),
   }));
-  destinos.push({ texto: trad('Sin proyecto'), actual: !s.proyectoId, accion: () => enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: null }) });
+  destinos.push({ texto: trad('Sin proyecto'), actual: !s.archivada && !s.proyectoId, accion: () => moverSesion(s, null) });
   menuFlotante(donde, [
+    ...(s.archivada ? [{ texto: trad('Restaurar'), accion: () => restaurarSesion(s) }, '-'] : []),
     { texto: trad('Cambiar el nombre…'), accion: () => renombrarSesion(s) },
     { texto: trad('Abrir la carpeta'), accion: () => enviar({ tipo: 'abrirRuta', ruta: s.carpeta }) },
     '-',
-    { titulo: trad('Mover a') },
+    { titulo: s.archivada ? trad('Restaurar en') : trad('Mover a') },
     ...destinos,
-    '-',
-    { texto: trad('Archivar…'), peligro: true, accion: () => archivarSesion(s.id) },
+    ...(s.archivada ? [] : ['-', { texto: trad('Archivar…'), peligro: true, accion: () => archivarSesion(s.id) }]),
   ]);
+}
+
+/** Nombre del proyecto donde está (o estaba) una sesión; «Sin proyecto» si no tiene o ya no existe. */
+function nombreProyecto(id) {
+  const p = id && S.estado.proyectos.find((x) => x.id === id);
+  return p ? p.nombre : trad('Sin proyecto');
+}
+
+/** Pasa una sesión a un proyecto (null: a ninguno). Si estaba archivada, se restaura ahí. */
+function moverSesion(s, p) {
+  enviar({ tipo: 'sesionMover', sesionId: s.id, proyectoId: p ? p.id : null });
+  if (s.archivada) aviso(trad('«{0}» restaurada en «{1}».', s.titulo, nombreProyecto(p && p.id)));
+}
+
+function restaurarSesion(s) {
+  enviar({ tipo: 'desarchivar', sesionId: s.id });
+  aviso(trad('«{0}» restaurada en «{1}».', s.titulo, nombreProyecto(s.proyectoId)));
 }
 
 async function renombrarSesion(s) {

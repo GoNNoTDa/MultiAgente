@@ -31,12 +31,15 @@ public sealed partial class Gestor
         EnviarEstado();
     }
 
-    /// <summary>Pasa una sesión a otro proyecto (o a ninguno). Solo cambia dónde se ve: su carpeta de trabajo sigue igual.</summary>
+    /// <summary>
+    /// Pasa una sesión a otro proyecto (o a ninguno). Solo cambia dónde se ve: su carpeta de trabajo sigue igual. Si estaba
+    /// archivada, se restaura en ese proyecto.
+    /// </summary>
     public void MoverSesion(string sesionId, string? proyectoId)
     {
         if (proyectoId is not null && _repo.Proyectos().All(p => p.Id != proyectoId))
             throw new ExcepcionUsuario("Ese proyecto ya no existe.");
-        CambiarSesion(sesionId, s => s.ProyectoId = proyectoId);
+        CambiarSesion(sesionId, s => { s.ProyectoId = proyectoId; s.Archivada = false; });
     }
 
     /// <summary>Cambia el nombre de una sesión (el agente ya no lo propondrá).</summary>

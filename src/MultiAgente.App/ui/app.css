@@ -550,6 +550,9 @@ details.herr summary:hover .tt{color:var(--texto)}
 button.proyecto{border:0;background:none;width:calc(100% - 16px);text-align:left;font:inherit;font-weight:600;font-size:13px}
 .archivadas-cab{margin-top:14px;color:var(--suave)}
 .ses-fila.archivada .ses{color:var(--suave)}
+/* Archivadas: «Restaurar» de un clic al lado del menú (que tiene «Restaurar en…») */
+.ses-fila.archivada .ses{padding-right:62px}
+.ses-fila .mas-ses.restaurar{right:40px}
 
 /* ---------- Zona de abajo: un solo protagonista */
 .permiso>div{border-color:var(--ambar);display:flex;flex-direction:column;gap:10px}

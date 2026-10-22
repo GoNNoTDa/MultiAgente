@@ -103,7 +103,7 @@ public sealed partial class Gestor : IAsyncDisposable
             var cuenta = s.CuentaId is null ? null : porId.GetValueOrDefault(s.CuentaId);
             return new
             {
-                s.Id, titulo = s.Titulo ?? "Sesión nueva", s.Carpeta, estado = viva?.Estado ?? EstadoSesion.Cerrada,
+                s.Id, s.ProyectoId, titulo = s.Titulo ?? "Sesión nueva", s.Carpeta, estado = viva?.Estado ?? EstadoSesion.Cerrada,
                 proveedor = cuenta?.Proveedor, cuenta = cuenta?.Alias, cuentaId = cuenta?.Id, s.EquipoId, s.UltimoUso,
             };
         }

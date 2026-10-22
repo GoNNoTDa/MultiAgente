@@ -122,6 +122,12 @@ public class BusquedaTests
         Assert.False(m.Repo.Sesion(s2.Id)!.Archivada);
         Assert.Equal(web.Id, m.Repo.Sesion(s1.Id)!.ProyectoId);
 
+        // Mandar una archivada a otro proyecto la restaura ahí (antes cambiaba de proyecto pero seguía archivada)
+        await m.Bucle.Ejecutar(() => m.Gestor.Archivar(s2.Id));
+        await m.Bucle.Ejecutar(() => { m.Gestor.MoverSesion(s2.Id, otro.Id); return true; });
+        Assert.False(m.Repo.Sesion(s2.Id)!.Archivada);
+        Assert.Equal(otro.Id, m.Repo.Sesion(s2.Id)!.ProyectoId);
+
         await Assert.ThrowsAsync<ExcepcionUsuario>(() => m.Bucle.Ejecutar(() => m.Gestor.ArchivarProyecto("no-existe")));
 
         // Que termine el turno antes de cerrar la base (si no, su consumo llegaría con la base ya cerrada)
