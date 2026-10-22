@@ -670,5 +670,19 @@ window.TEXTOS_en = {
  "Copiar": "Copy",
  "Copiado": "Copied",
  "Copiar el código": "Copy the code",
- "Copiar la respuesta": "Copy the reply"
+ "Copiar la respuesta": "Copy the reply",
+ "{0} min {1} s": "{0} min {1} s",
+ "{0} h {1} min": "{0} h {1} min",
+ "{0} de {1} tareas hechas": "{0} of {1} tasks done",
+ "{0} subagentes trabajando": "{0} subagents working",
+ "{0} subagentes": "{0} subagents",
+ "Cuando el agente se apunte tareas o lance subagentes, aparecen aquí.": "When the agent writes down tasks or launches subagents, they show up here.",
+ "Subagentes": "Subagents",
+ "Subagente": "Subagent",
+ "1 acción": "1 action",
+ "Ver en la conversación": "See it in the conversation",
+ "Actividad": "Activity",
+ "Tareas y subagentes de la sesión": "The session's tasks and subagents",
+ "1 subagente trabajando": "1 subagent working",
+ "1 subagente": "1 subagent"
 };

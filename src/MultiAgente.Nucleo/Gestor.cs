@@ -895,6 +895,7 @@ public sealed partial class Gestor : IAsyncDisposable
         error = a.UltimoError,
         admiteImagenes = a.AdmiteImagenes,
         contexto = a.Contexto is { } k ? new { usado = k.Usado, tamano = k.Tamano } : null,
+        turnoDesde = a.TurnoDesde,
         cuenta = new { a.Cuenta.Id, a.Cuenta.Alias, a.Cuenta.Proveedor, tipo = a.Cuenta.Tipo.ToString() },
     };
 

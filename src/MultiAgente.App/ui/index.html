@@ -102,6 +102,7 @@
         <span class="contexto" id="sesContexto" hidden title="Contexto usado de la conversación"><i></i><b></b></span>
         <label class="quien" title="Cuenta que trabaja en esta sesión"><span class="punto" id="sesPunto"></span>
           <select id="sesCuenta"></select></label>
+        <button class="boton fino fantasma" id="btnActividad" title="Tareas y subagentes de la sesión"><svg class="i" aria-hidden="true"><use href="#i-encurso"/></svg>Actividad <b id="actividadN"></b></button>
         <button class="boton fino fantasma" id="btnCambios" title="Ver los ficheros cambiados"><svg class="i" aria-hidden="true"><use href="#i-cambios"/></svg>Cambios <b id="cambiosN"></b></button>
         <button class="boton fino fantasma" id="btnArchivar" title="Archivar la sesión (deja de verse en la lista)"><svg class="i" aria-hidden="true"><use href="#i-archivar"/></svg>Archivar</button>
       </header>
@@ -249,6 +250,16 @@
         <button class="boton fino fantasma solo-icono" id="pcCerrar" title="Cerrar el visor" aria-label="Cerrar el visor"><svg class="i" aria-hidden="true"><use href="#i-cerrar"/></svg></button>
       </header>
       <div class="panel-cuerpo" id="pcCuerpo"></div>
+    </div>
+    <!-- Actividad de la sesión: tareas del agente y subagentes (a la derecha, como el visor de cambios) -->
+    <div class="panel" id="panelActividad" hidden>
+      <div class="panel-asa" title="Arrastra para cambiar el ancho"></div>
+      <header class="panel-cab">
+        <b>Actividad</b>
+        <span class="tenue info" id="paInfo"></span>
+        <button class="boton fino fantasma solo-icono" id="paCerrar" title="Cerrar" aria-label="Cerrar"><svg class="i" aria-hidden="true"><use href="#i-cerrar"/></svg></button>
+      </header>
+      <div class="panel-cuerpo" id="paCuerpo"></div>
     </div>
   </main>
 

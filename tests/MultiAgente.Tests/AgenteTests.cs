@@ -250,6 +250,25 @@ public class AgenteTests
     }
 
     [Fact]
+    public async Task Lo_del_subagente_queda_en_su_herramienta_y_no_en_la_respuesta()
+    {
+        await using var m = await Arrancado("agente");
+        var a = m.Agente;
+        Assert.Null(a.TurnoDesde);
+        a.Enviar("lanza un subagente");
+        await Esperar(() => a.TurnoDesde is not null || a.Estado == EstadoSesion.Esperando && a.Hilo.Cuantas >= 3, "turno");
+        await EsperarTurno(a, 4);
+        Assert.Null(a.TurnoDesde); // al terminar el turno ya no cuenta
+
+        var entradas = a.Hilo.Entradas;
+        var sub = Assert.Single(entradas, e => e.Id == "sub1");
+        Assert.Equal(("Agent", "completed", "Miro las pruebas."), (sub.Herramienta, sub.Estado, sub.Texto));
+        var hija = Assert.Single(entradas, e => e.Id == "sub1-leer");
+        Assert.Equal(("sub1", "Read"), (hija.Padre, hija.Herramienta));
+        Assert.Equal("Recibido: lanza un subagente", TextoAgente(a)); // sin el texto del subagente mezclado
+    }
+
+    [Fact]
     public async Task La_compactacion_queda_como_hito_con_sus_tokens()
     {
         await using var m = await Arrancado("agente");

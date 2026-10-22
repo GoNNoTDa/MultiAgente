@@ -69,6 +69,8 @@ public sealed class SesionAgente : IAsyncDisposable
     public PeticionPermiso? PermisoPendiente { get; private set; }
     public IReadOnlyList<string> Cola => _cola.Select(m => m.Texto).ToList();
     public string? UltimoError { get; private set; }
+    /// <summary>Cuándo empezó el turno en curso (null si no está trabajando): para enseñar cuánto lleva.</summary>
+    public DateTime? TurnoDesde { get; private set; }
 
     /// <summary>Cambió el estado, las opciones, la cola o el permiso pendiente.</summary>
     public event Action<SesionAgente>? Cambiado;
@@ -354,6 +356,7 @@ public sealed class SesionAgente : IAsyncDisposable
                 Hilo.Guardar(yo);
                 EntradaCambiada?.Invoke(this, yo.Clonar());
                 var bloques = Bloques(m.Texto, m.Adjuntos);
+                TurnoDesde = DateTime.Now;
                 PonerEstado(EstadoSesion.Trabajando);
                 try
                 {
@@ -381,6 +384,7 @@ public sealed class SesionAgente : IAsyncDisposable
                         Avisar($"La cuenta «{Cuenta.Alias}» ha llegado a su límite de uso.", "limite");
                     if (limiteDelTurno is not null) _pausada = true;
                     CerrarTurno();
+                    TurnoDesde = null;
                     if (Estado is EstadoSesion.Trabajando or EstadoSesion.PidePermiso) PonerEstado(EstadoSesion.Esperando);
                 }
                 try
@@ -514,8 +518,8 @@ public sealed class SesionAgente : IAsyncDisposable
 
         switch (tipo)
         {
-            case "agent_message_chunk": AnadirTexto("agente", u["content"]); break;
-            case "agent_thought_chunk": AnadirTexto("pensamiento", u["content"]); break;
+            case "agent_message_chunk": AnadirTexto("agente", u); break;
+            case "agent_thought_chunk": AnadirTexto("pensamiento", u); break;
             case "tool_call": AplicarHerramienta(u, u["toolCallId"]?.GetValue<string>(), nueva: true); break;
             case "tool_call_update": AplicarHerramienta(u, u["toolCallId"]?.GetValue<string>(), nueva: false); break;
             case "plan": AplicarPlan(u["entries"]); break;
@@ -571,11 +575,18 @@ public sealed class SesionAgente : IAsyncDisposable
         }
     }
 
-    private void AnadirTexto(string tipo, JsonNode? contenido)
+    private void AnadirTexto(string tipo, JsonNode u)
     {
+        var contenido = u["content"];
         if (contenido?["type"]?.GetValue<string>() != "text") return;
         var texto = contenido["text"]?.GetValue<string>();
         if (string.IsNullOrEmpty(texto)) return;
+        // Lo que escribe un subagente no es la respuesta: va a su herramienta (lo que dice ahora; su informe llega al final)
+        if (u["_meta"]?["claudeCode"]?["parentToolUseId"]?.GetValue<string>() is { } padre)
+        {
+            if (tipo == "agente") TextoDeSubagente(padre, texto);
+            return;
+        }
         Entrada e;
         lock (_cerrojo)
         {
@@ -589,6 +600,20 @@ public sealed class SesionAgente : IAsyncDisposable
             e.Texto += texto;
             if (tipo == "agente") Limpiar(e);
             e = e.Clonar();
+        }
+        EntradaCambiada?.Invoke(this, e);
+    }
+
+    private void TextoDeSubagente(string padre, string texto)
+    {
+        Entrada e;
+        lock (_cerrojo)
+        {
+            var sub = _turno.FirstOrDefault(x => x.Tipo == "herramienta" && x.Id == padre);
+            if (sub is null) return;
+            sub.Texto = (sub.Texto ?? "") + texto;
+            if (sub.Texto.Length > 4000) sub.Texto = sub.Texto[^4000..]; // basta con lo último que ha dicho
+            e = sub.Clonar();
         }
         EntradaCambiada?.Invoke(this, e);
     }
@@ -659,6 +684,11 @@ public sealed class SesionAgente : IAsyncDisposable
             e = existente;
             if (compacta) e.Tipo = "compactacion";
             if (compacta && u["rawOutput"] is JsonObject datos) e.Datos = datos.DeepClone();
+            if (u["_meta"]?["claudeCode"] is JsonObject cc)
+            {
+                if (cc["toolName"]?.GetValue<string>() is { } nombre) e.Herramienta = nombre;
+                if (cc["parentToolUseId"]?.GetValue<string>() is { } padre) e.Padre = padre;
+            }
             if (u["title"]?.GetValue<string>() is { } t) e.Titulo = t;
             if (u["kind"]?.GetValue<string>() is { } k) e.Clase = k;
             if (u["status"]?.GetValue<string>() is { } s) e.Estado = s;

@@ -182,6 +182,36 @@ async Task<JsonNode?> Prompt(JsonNode p)
         throw new FalloAcp(-32000, "Usage limit reached for this account");
     }
     if (texto.Contains("muere")) Environment.Exit(3);
+    if (texto.Contains("subagente"))
+    {
+        // Como Claude Code: herramienta «Agent»; lo que hace y dice el subagente lleva su id en parentToolUseId
+        JsonObject Meta(string? padre = null, string? nombre = null)
+        {
+            var cc = new JsonObject();
+            if (nombre is not null) cc["toolName"] = nombre;
+            if (padre is not null) cc["parentToolUseId"] = padre;
+            return new JsonObject { ["claudeCode"] = cc };
+        }
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "tool_call", ["toolCallId"] = "sub1", ["title"] = "Revisar las pruebas", ["kind"] = "think",
+            ["status"] = "in_progress", ["_meta"] = Meta(nombre: "Agent"),
+        });
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "tool_call", ["toolCallId"] = "sub1-leer", ["title"] = "Leer Pruebas.cs", ["kind"] = "read",
+            ["status"] = "completed", ["_meta"] = Meta("sub1", "Read"),
+        });
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "agent_message_chunk", ["content"] = new JsonObject { ["type"] = "text", ["text"] = "Miro las pruebas." },
+            ["_meta"] = Meta("sub1"),
+        });
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "tool_call_update", ["toolCallId"] = "sub1", ["status"] = "completed", ["_meta"] = Meta(nombre: "Agent"),
+        });
+    }
     if (texto.Contains("compacta"))
     {
         // Como Claude Code con un cliente sin avisos de compactación: herramienta «compact» con los tokens en rawOutput

@@ -670,5 +670,19 @@ window.TEXTOS_ca = {
  "Copiar": "Copiar",
  "Copiado": "Copiat",
  "Copiar el código": "Copiar el codi",
- "Copiar la respuesta": "Copiar la resposta"
+ "Copiar la respuesta": "Copiar la resposta",
+ "{0} min {1} s": "{0} min {1} s",
+ "{0} h {1} min": "{0} h {1} min",
+ "{0} de {1} tareas hechas": "{0} de {1} tasques fetes",
+ "{0} subagentes trabajando": "{0} subagents treballant",
+ "{0} subagentes": "{0} subagents",
+ "Cuando el agente se apunte tareas o lance subagentes, aparecen aquí.": "Quan l'agent s'apunti tasques o llanci subagents, apareixen aquí.",
+ "Subagentes": "Subagents",
+ "Subagente": "Subagent",
+ "1 acción": "1 acció",
+ "Ver en la conversación": "Veure-ho a la conversa",
+ "Actividad": "Activitat",
+ "Tareas y subagentes de la sesión": "Tasques i subagents de la sessió",
+ "1 subagente trabajando": "1 subagent treballant",
+ "1 subagente": "1 subagent"
 };

@@ -146,3 +146,12 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
   (5) Compactación visible: claude-agent-acp la manda como herramienta «compact» (con `rawOutput` de tokens) a los clientes
   sin avisos de compactación; se guarda como entrada «compactacion» y se pinta como hito.
   (6) «Copiar» en cada bloque de código y en cada respuesta entera (Markdown). Pruebas: 159.
+- 22/10 (2) Más peticiones del usuario:
+  (1) Hacía falta pulsar dos veces para cambiar de conversación: cada aviso de un agente (y volver a la ventana) rehacía el
+  lateral entero, y si caía entre pulsar y soltar, el clic se perdía. Ahora no se repinta con el botón pulsado (se hace al
+  soltar, después del clic) ni si no ha cambiado nada (`firmaDelArbol`).
+  (2) «… está trabajando · 2 min 05 s»: `SesionAgente.TurnoDesde` (también al reabrir la ventana a mitad de turno).
+  (3) Panel «Actividad» a la derecha (como el de cambios, uno a la vez y con el mismo ancho): tareas del último plan y
+  subagentes (herramientas «Agent»/«Task») con sus acciones (`parentToolUseId` de claude-agent-acp → `Entrada.Padre`),
+  la última y lo que dicen; se abre solo cuando hay actividad salvo que el usuario lo cierre. Los textos de un subagente
+  ya no se mezclan con la respuesta: van a su herramienta (`Entrada.Texto`). Pruebas: 160.

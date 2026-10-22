@@ -403,10 +403,33 @@ function grupoProyecto(p, sesiones, pleg) {
   return nodos;
 }
 
+// El lateral se rehace entero, y le llegan avisos a menudo (cada cambio de un agente, al volver a la ventana…). Si se
+// rehace entre que se pulsa y se suelta un botón, el clic se pierde y había que pulsar dos veces: no se repinta mientras
+// el botón está pulsado (se hace al soltar) ni si no ha cambiado nada.
+let firmaArbol = null, arbolPulsado = false, arbolPendiente = false;
+function firmaDelArbol() {
+  const agentes = Object.entries(S.sesiones).map(([id, s]) => id + ':' + (s.agente ? s.agente.estado : '')).join(',');
+  return JSON.stringify([S.actual, leerLocal('plegados'), Object.keys(S.encontradas), agentes,
+    S.estado.proyectos, S.estado.sueltas, S.estado.archivadas, S.estado.cuentas]);
+}
+document.querySelector('aside').addEventListener('pointerdown', () => { arbolPulsado = true; }, true);
+function soltarArbol() {
+  if (!arbolPulsado) return;
+  arbolPulsado = false;
+  if (arbolPendiente) { arbolPendiente = false; setTimeout(pintarArbol, 0); } // después del clic
+}
+window.addEventListener('pointerup', soltarArbol, true);
+window.addEventListener('pointercancel', soltarArbol, true);
+window.addEventListener('blur', soltarArbol);
+
 function pintarArbol() {
+  if (arbolPulsado) { arbolPendiente = true; return; }
+  if (!S.estado) return;
+  const firma = firmaDelArbol();
+  if (firma === firmaArbol) return;
+  firmaArbol = firma;
   const a = $('arbol');
   a.replaceChildren();
-  if (!S.estado) return;
   if (!S.estado.proyectos.length && !S.estado.sueltas.length)
     a.append(el('div', 'vacio', trad('Aún no hay sesiones. Empieza una sesión nueva, crea un proyecto o importa tus conversaciones con ＋.')));
   const pleg = plegados();
@@ -782,6 +805,7 @@ function actualizarEntrada(sesionId, e) {
     }
     pendientes = new Set();
     agruparAcciones(cont);
+    pintarActividad();
     bajar();
   });
 }
@@ -828,6 +852,20 @@ function resumenAcciones(grupo, acciones) {
   grupo.classList.toggle('con-error', fallos > 0);
 }
 
+// Cuánto lleva el turno: «12 s», «3 min 05 s», «1 h 04 min»
+function duracionTurno(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return trad('{0} s', s);
+  const m = Math.floor(s / 60);
+  if (m < 60) return trad('{0} min {1} s', m, String(s % 60).padStart(2, '0'));
+  return trad('{0} h {1} min', Math.floor(m / 60), String(m % 60).padStart(2, '0'));
+}
+
+function ponerReloj(r) {
+  r.textContent = ' · ' + duracionTurno(Date.now() - new Date(r.dataset.desde).getTime());
+}
+setInterval(() => document.querySelectorAll('.trabajando .reloj').forEach(ponerReloj), 1000);
+
 function pintarTrabajando() {
   const cont = $('entradas');
   const viejo = cont.querySelector('.trabajando');
@@ -837,6 +875,12 @@ function pintarTrabajando() {
     const nombre = ag ? ag.cuenta.alias : '';
     const t = el('div', 'trabajando');
     t.append(el('i'), document.createTextNode(estado === 'Arrancando' ? trad('Arrancando {0}…', nombre) : trad('{0} está trabajando…', nombre)));
+    if (estado === 'Trabajando' && ag && ag.turnoDesde) {
+      const r = el('span', 'reloj');
+      r.dataset.desde = ag.turnoDesde;
+      t.append(r);
+      ponerReloj(r);
+    }
     if (viejo) viejo.replaceWith(t); else cont.append(t);
     bajar();
   } else if (viejo) viejo.remove();
@@ -2258,7 +2302,88 @@ function pintarBotonCambios() {
   $('cambiosN').textContent = n ? String(n) : '';
 }
 
+// ------------------------------------------------------------------ actividad: tareas y subagentes
+
+// '1' abierto a mano, '0' cerrado a mano; sin elegir, se abre solo cuando la sesión tiene tareas o subagentes
+const PA = { eleccion: leerLocal('panelActividad') };
+const SUBAGENTE = new Set(['Agent', 'Task']);
+
+function actividadDe(sesionId) {
+  const s = S.sesiones[sesionId];
+  if (!s) return { plan: null, subagentes: [] };
+  const entradas = s.orden.map((id) => s.entradas.get(id)).filter(Boolean);
+  const planes = entradas.filter((e) => e.tipo === 'plan' && e.pasos && e.pasos.length);
+  const subagentes = entradas.filter((e) => e.tipo === 'herramienta' && SUBAGENTE.has(e.herramienta)).map((sub) => {
+    const hijas = entradas.filter((e) => e.padre === sub.id);
+    return { sub, hijas };
+  });
+  return { plan: planes.length ? planes[planes.length - 1] : null, subagentes };
+}
+
+function pintarActividad() {
+  const a = S.vista === 'sesion' && S.actual ? actividadDe(S.actual) : { plan: null, subagentes: [] };
+  const porHacer = a.plan ? a.plan.pasos.filter((p) => p.status !== 'completed').length : 0;
+  const enCurso = a.subagentes.filter((x) => x.sub.estado === 'in_progress' || x.sub.estado === 'pending').length;
+  const hay = !!a.plan || a.subagentes.length > 0;
+  $('actividadN').textContent = porHacer + enCurso ? String(porHacer + enCurso) : '';
+  const ver = S.vista === 'sesion' && !!S.actual && !PC.abierto && (PA.eleccion === '1' || (PA.eleccion == null && hay));
+  $('panelActividad').hidden = !ver;
+  $('btnActividad').classList.toggle('on', ver);
+  if (!ver) return;
+
+  const cuerpo = $('paCuerpo');
+  const arriba = cuerpo.scrollTop;
+  cuerpo.replaceChildren();
+  $('paInfo').textContent = [a.plan ? trad('{0} de {1} tareas hechas', a.plan.pasos.length - porHacer, a.plan.pasos.length) : null,
+    a.subagentes.length ? (enCurso ? (enCurso === 1 ? trad('1 subagente trabajando') : trad('{0} subagentes trabajando', enCurso)) : (a.subagentes.length === 1 ? trad('1 subagente') : trad('{0} subagentes', a.subagentes.length))) : null].filter(Boolean).join(' · ');
+  if (!hay) cuerpo.append(el('div', 'pc-vacio', trad('Cuando el agente se apunte tareas o lance subagentes, aparecen aquí.')));
+
+  if (a.plan) {
+    cuerpo.append(el('div', 'pa-tit', trad('Tareas')));
+    const ul = el('ul', 'pa-tareas');
+    for (const p of a.plan.pasos) {
+      const li = el('li', p.status || '');
+      li.append(icono(p.status === 'completed' ? 'hecho' : p.status === 'in_progress' ? 'encurso' : 'pendiente'), el('span', '', p.content));
+      ul.append(li);
+    }
+    cuerpo.append(ul);
+  }
+
+  if (a.subagentes.length) {
+    cuerpo.append(el('div', 'pa-tit', trad('Subagentes')));
+    for (const { sub, hijas } of a.subagentes) {
+      const b = el('button', 'pa-sub ' + (sub.estado || ''));
+      const cab = el('span', 'pa-sub-cab');
+      cab.append(icono(sub.estado === 'completed' ? 'hecho' : sub.estado === 'failed' ? 'error' : 'encurso'),
+                 el('b', '', sub.titulo || trad('Subagente')), el('span', 'st ' + (sub.estado || ''), ESTADO_HERR[sub.estado] || ''));
+      b.append(cab);
+      const ultima = hijas[hijas.length - 1];
+      const detalle = [hijas.length === 1 ? trad('1 acción') : trad('{0} acciones', hijas.length), ultima && ultima.titulo].filter(Boolean).join(' · ');
+      b.append(el('span', 'pa-sub-det', detalle));
+      if (sub.texto) b.append(el('span', 'pa-sub-dice', sub.texto.trim().slice(-220)));
+      b.title = trad('Ver en la conversación');
+      b.addEventListener('click', () => irAEntrada(sub.id));
+      cuerpo.append(b);
+    }
+  }
+  cuerpo.scrollTop = arriba;
+}
+
+/** Baja en la conversación hasta una entrada, la abre (y su bloque de acciones) y la resalta un momento. */
+function irAEntrada(id) {
+  const n = $('entradas').querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (!n) return;
+  const grupo = n.closest('details.acciones');
+  if (grupo) grupo.open = true;
+  if (n.tagName === 'DETAILS') n.open = true;
+  pegado = false;
+  n.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  n.classList.add('destacada');
+  setTimeout(() => n.classList.remove('destacada'), 2500);
+}
+
 function pintarPanel() {
+  pintarActividad();
   const ver = PC.abierto && S.vista === 'sesion' && !!S.actual;
   $('panelCambios').hidden = !ver;
   $('btnCambios').classList.toggle('on', ver);
@@ -2424,22 +2549,23 @@ function vistaUnificada(texto, ruta, numeros = true) {
   return t;
 }
 
-// Ancho del visor: se arrastra su borde izquierdo
+// Ancho de los paneles de la derecha (cambios y actividad, el mismo para los dos): se arrastra su borde izquierdo
 (() => {
+  const paneles = [$('panelCambios'), $('panelActividad')];
   const ancho = Number(leerLocal('panelAncho'));
-  if (ancho > 0) $('panelCambios').style.width = ancho + 'px';
-  $('panelAsa').addEventListener('mousedown', (e) => {
+  if (ancho > 0) for (const p of paneles) p.style.width = ancho + 'px';
+  for (const panel of paneles) panel.querySelector('.panel-asa').addEventListener('mousedown', (e) => {
     e.preventDefault();
     document.body.classList.add('redimensionando');
     const mover = (ev) => {
       const w = Math.max(320, Math.min(window.innerWidth - 272 - 380, window.innerWidth - ev.clientX));
-      $('panelCambios').style.width = w + 'px';
+      for (const p of paneles) p.style.width = w + 'px';
     };
     const soltar = () => {
       document.removeEventListener('mousemove', mover);
       document.removeEventListener('mouseup', soltar);
       document.body.classList.remove('redimensionando');
-      guardarLocal('panelAncho', String(parseInt($('panelCambios').style.width, 10) || ''));
+      guardarLocal('panelAncho', String(parseInt(panel.style.width, 10) || ''));
     };
     document.addEventListener('mousemove', mover);
     document.addEventListener('mouseup', soltar);
@@ -2595,6 +2721,14 @@ $('sesCuenta').addEventListener('change', async (e) => {
 });
 $('btnArchivar').addEventListener('click', () => { if (S.actual) archivarSesion(S.actual); });
 $('sesTitulo').addEventListener('dblclick', () => { const s = sesionActual(); if (s) renombrarSesion(s); });
+$('btnActividad').addEventListener('click', () => {
+  const abrir = $('panelActividad').hidden;
+  PA.eleccion = abrir ? '1' : '0';
+  guardarLocal('panelActividad', PA.eleccion);
+  if (abrir && PC.abierto) { PC.abierto = false; guardarLocal('panelCambios', '0'); } // uno a la vez: no caben los dos
+  pintarPanel();
+});
+$('paCerrar').addEventListener('click', () => { PA.eleccion = '0'; guardarLocal('panelActividad', '0'); pintarPanel(); });
 $('btnCambios').addEventListener('click', () => {
   PC.abierto = !PC.abierto;
   guardarLocal('panelCambios', PC.abierto ? '1' : '0');

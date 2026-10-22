@@ -30,6 +30,10 @@ public sealed class Entrada
     public JsonNode? Ubicaciones { get; set; }
     /// <summary>Herramienta: datos de entrada tal cual los da el agente.</summary>
     public JsonNode? Datos { get; set; }
+    /// <summary>Herramienta: su nombre en el agente (Bash, Read, Agent…), si lo da. «Agent» o «Task»: un subagente.</summary>
+    public string? Herramienta { get; set; }
+    /// <summary>Herramienta: el subagente que la ha usado (Id de su herramienta «Agent»); null si es del agente principal.</summary>
+    public string? Padre { get; set; }
     /// <summary>Plan: lista de tareas (ACP «entries»: content, priority, status).</summary>
     public JsonNode? Pasos { get; set; }
     /// <summary>Aviso: info, error, limite, interrumpido.</summary>
