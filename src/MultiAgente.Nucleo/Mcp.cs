@@ -43,7 +43,21 @@ public sealed class ServidorMcpDef
 public static class CatalogoMcp
 {
     private const string Ajuste = "mcp";
-    private static readonly Regex PareceSecreto = new(@"(key|token|secret|password|passwd|pwd|auth|bearer|credential)", RegexOptions.IgnoreCase);
+    private static readonly Regex PareceSecreto = new(
+        @"(key|token|secret|password|passwd|pwd|auth|bearer|credential|cookie|session|dsn|(^|[_\-])pat($|[_\-]))", RegexOptions.IgnoreCase);
+    /// <summary>Nombres que apuntan a un fichero o carpeta (KEY_FILE, --session-dir…): su valor es una ruta, no un secreto.</summary>
+    private static readonly Regex EsRuta = new(@"(file|path|dir|folder)$", RegexOptions.IgnoreCase);
+    /// <summary>usuario:contraseña@ en una dirección (postgres://yo:clave@servidor/base).</summary>
+    private static readonly Regex Credencial = new(@"\b([A-Za-z][A-Za-z0-9+.\-]*://[^/?#@:\s]*:)([^/?#@\s]+)@");
+    private static readonly Regex Parametro = new(@"([?&;])([^=&#\s]+)=([^&#\s]+)");
+    private static readonly Regex Opcion = new(@"^-{1,2}[A-Za-z][A-Za-z0-9_\-]*$");
+    /// <summary>--opcion=valor o NOMBRE=valor (docker -e GITHUB_TOKEN=…).</summary>
+    private static readonly Regex OpcionConValor = new(@"^(-{0,2}[A-Za-z_][A-Za-z0-9_\-]*)=(.+)$");
+    /// <summary>
+    /// Marca que queda en la base en lugar de un secreto de los argumentos o de la dirección; el valor está en la bóveda
+    /// y se restituye al pasar el servidor a la sesión.
+    /// </summary>
+    private static readonly Regex Marca = new(@"\{\{secreto:([a-f0-9]{8,32})\}\}");
 
     public static List<ServidorMcpDef> Cargar(IRepositorio repo)
     {
@@ -60,13 +74,30 @@ public static class CatalogoMcp
 
     public static string RefSecreto(ServidorMcpDef s, string nombre) => $"mcp:{s.Id}:{nombre}";
 
-    /// <summary>¿Se guarda como secreto? (nombre que lo parece: *_KEY, TOKEN, Authorization…)</summary>
+    /// <summary>Referencia en la bóveda de un secreto de los argumentos o de la dirección (por su marca).</summary>
+    public static string RefMarca(ServidorMcpDef s, string clave) => $"mcp:{s.Id}:@{clave}";
+
+    /// <summary>¿El nombre (de variable, cabecera, opción o parámetro) parece de un secreto? *_KEY, TOKEN, GITHUB_PAT…</summary>
+    public static bool NombreSecreto(string nombre)
+    {
+        nombre = nombre.TrimStart('-');
+        return PareceSecreto.IsMatch(nombre) && !EsRuta.IsMatch(nombre);
+    }
+
+    /// <summary>
+    /// ¿Se guarda como secreto? Nombre que lo parece (*_KEY, TOKEN, Authorization…), valor con forma de clave
+    /// (ghp_…, sk-…) o dirección con usuario:contraseña (DATABASE_URL).
+    /// </summary>
     public static bool EsSecreto(string nombre, string? valor) =>
-        PareceSecreto.IsMatch(nombre) && !string.IsNullOrEmpty(valor) && !valor.StartsWith("${");
+        Literal(valor) && (NombreSecreto(nombre) || Registro.FormaDeClave.IsMatch(valor!) || Credencial.IsMatch(valor!));
+
+    /// <summary>Valor escrito tal cual (ni vacío, ni ${VARIABLE}, ni ya marcado).</summary>
+    private static bool Literal(string? valor) => !string.IsNullOrEmpty(valor) && !valor.StartsWith("${") && !Marca.IsMatch(valor);
 
     /// <summary>
     /// Pone los valores secretos en la bóveda y los quita del servidor (queda solo la marca). Devuelve el servidor
-    /// listo para guardar.
+    /// listo para guardar. Vale también para los secretos de los argumentos (--api-key xxx, --token=xxx, claves
+    /// sueltas) y de la dirección (?token=…, usuario:contraseña@): en su lugar queda {{secreto:…}}.
     /// </summary>
     public static ServidorMcpDef GuardarSecretos(ServidorMcpDef s, Boveda boveda)
     {
@@ -79,12 +110,56 @@ public static class CatalogoMcp
                 v.Valor = null;
             }
         }
+
+        string Marcar(string valor)
+        {
+            var clave = Guid.NewGuid().ToString("N")[..12];
+            boveda.Guardar(RefMarca(s, clave), valor);
+            return "{{secreto:" + clave + "}}";
+        }
+
+        var args = s.Argumentos;
+        for (var i = 0; i < args.Count; i++)
+        {
+            var kv = OpcionConValor.Match(args[i]);
+            if (kv.Success && NombreSecreto(kv.Groups[1].Value) && Literal(kv.Groups[2].Value))
+                args[i] = kv.Groups[1].Value + "=" + Marcar(kv.Groups[2].Value);
+            else if (Opcion.IsMatch(args[i]) && NombreSecreto(args[i]) && i + 1 < args.Count && !args[i + 1].StartsWith('-') && Literal(args[i + 1]))
+            {
+                i++;
+                args[i] = Marcar(args[i]);
+            }
+            else
+            {
+                if (args[i].Contains("://")) args[i] = TaparUrl(args[i], Marcar);
+                args[i] = Registro.FormaDeClave.Replace(args[i], m => Marcar(m.Value));
+            }
+        }
+        if (!string.IsNullOrEmpty(s.Url)) s.Url = TaparUrl(s.Url, Marcar);
         return s;
     }
+
+    /// <summary>Cambia por una marca la contraseña de usuario:contraseña@ y los parámetros de nombre secreto (?token=…).</summary>
+    private static string TaparUrl(string url, Func<string, string> marcar)
+    {
+        url = Credencial.Replace(url, m => Literal(m.Groups[2].Value) ? m.Groups[1].Value + marcar(m.Groups[2].Value) + "@" : m.Value);
+        url = Parametro.Replace(url, m => NombreSecreto(Uri.UnescapeDataString(m.Groups[2].Value)) && Literal(m.Groups[3].Value)
+            ? m.Groups[1].Value + m.Groups[2].Value + "=" + marcar(m.Groups[3].Value) : m.Value);
+        return Registro.FormaDeClave.Replace(url, m => marcar(m.Value));
+    }
+
+    /// <summary>Claves de las marcas que lleva el servidor en sus argumentos y su dirección.</summary>
+    public static HashSet<string> Marcas(ServidorMcpDef s) =>
+        s.Argumentos.Append(s.Url ?? "").SelectMany(t => Marca.Matches(t)).Select(m => m.Groups[1].Value).ToHashSet();
+
+    /// <summary>Pone el valor real (de la bóveda) en lugar de cada marca.</summary>
+    private static string Restituir(ServidorMcpDef s, Boveda boveda, string texto) =>
+        Marca.Replace(texto, m => boveda.Obtener(RefMarca(s, m.Groups[1].Value)) ?? "");
 
     public static void BorrarSecretos(ServidorMcpDef s, Boveda boveda)
     {
         foreach (var v in s.Valores.Where(v => v.Secreto)) boveda.Borrar(RefSecreto(s, v.Nombre));
+        foreach (var m in Marcas(s)) boveda.Borrar(RefMarca(s, m));
     }
 
     /// <summary>Definiciones ACP de los servidores activos (los secretos se leen de la bóveda en este momento).</summary>
@@ -111,7 +186,7 @@ public static class CatalogoMcp
         if (s.Tipo is "http" or "sse")
         {
             if (string.IsNullOrWhiteSpace(s.Url)) throw new ExcepcionUsuario("falta la dirección");
-            return new JsonObject { ["type"] = s.Tipo, ["name"] = s.Nombre, ["url"] = Expandir(s.Url), ["headers"] = Valores() };
+            return new JsonObject { ["type"] = s.Tipo, ["name"] = s.Nombre, ["url"] = Restituir(s, boveda, Expandir(s.Url)), ["headers"] = Valores() };
         }
         if (string.IsNullOrWhiteSpace(s.Comando)) throw new ExcepcionUsuario("falta la orden");
         var (exe, previos) = ResolverOrden(Expandir(s.Comando), path);
@@ -119,7 +194,7 @@ public static class CatalogoMcp
         {
             ["name"] = s.Nombre,
             ["command"] = exe,
-            ["args"] = new JsonArray(previos.Concat(s.Argumentos.Select(Expandir)).Select(a => (JsonNode)a).ToArray()),
+            ["args"] = new JsonArray(previos.Concat(s.Argumentos.Select(a => Restituir(s, boveda, Expandir(a)))).Select(a => (JsonNode)a).ToArray()),
             ["env"] = Valores(),
         };
     }

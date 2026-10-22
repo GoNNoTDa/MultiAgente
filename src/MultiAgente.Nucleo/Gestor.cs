@@ -841,6 +841,7 @@ public sealed partial class Gestor : IAsyncDisposable
         a.UsoDelTurno += (x, uso) => _enUi(() => AnotarUso(x, uso));
         a.TurnoTerminado += x => _enUi(() =>
         {
+            if (!_vivas.ContainsValue(x)) return; // cerrada mientras tanto (p. ej. al salir): ni relevo ni resumen
             _ = RevisarRelevos();
             _ = ActualizarResumen(x);
         });
@@ -1109,12 +1110,14 @@ public sealed partial class Gestor : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (_reloj is not null) await _reloj.DisposeAsync();
-        foreach (var a in _vivas.Values.ToList())
+        // Todos a la vez: cada uno espera hasta 3 s a que su agente termine, y la ventana no espera más de 8
+        var vivas = _vivas.Values.ToList();
+        _vivas.Clear();
+        await Task.WhenAll(vivas.Select(async a =>
         {
             try { await a.DisposeAsync(); }
             catch (Exception ex) { Registro.Error("Al cerrar un agente", ex); }
-        }
-        _vivas.Clear();
+        }));
         if (_traductor is not null) await _traductor.DisposeAsync();
     }
 }

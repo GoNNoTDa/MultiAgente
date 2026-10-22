@@ -69,6 +69,7 @@ public static class ResumenVivo
             foreach (var (k, v) in entorno)
                 if (v is null) psi.Environment.Remove(k); else psi.Environment[k] = v;
             using var p = Process.Start(psi)!;
+            using var trabajo = TrabajoProcesos.Atar(p); // si MultiAgente se cierra a medias, no se queda vivo
             await p.StandardInput.WriteAsync(peticion);
             p.StandardInput.Close();
             var salida = p.StandardOutput.ReadToEndAsync(ct);

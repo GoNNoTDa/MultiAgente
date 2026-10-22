@@ -273,6 +273,13 @@ function mostrar(vista) {
 
 function abrirSesion(id) {
   cambiarBorrador(id);
+  // Memoria: las demás sesiones que no están trabajando sueltan su conversación (al abrirlas, llega otra vez entera)
+  for (const [otra, x] of Object.entries(S.sesiones)) {
+    if (otra === id || (x.agente && ['Trabajando', 'PidePermiso', 'Arrancando'].includes(x.agente.estado))) continue;
+    x.entradas = new Map();
+    x.orden = [];
+  }
+  ses(id).mostrar = 0;
   guardarLocal('ultimaSesion', id);
   S.actual = id;
   mostrar('sesion');
@@ -746,13 +753,38 @@ function pintarRelevo() {
 let pendientes = new Set();
 let pintando = false;
 
-function pintarConversacion() {
+// Con conversaciones de horas, pintarlo todo hace la ventana lenta: se pintan las últimas entradas y lo anterior, a
+// petición («Ver lo anterior»). Si la búsqueda lleva a una entrada antigua, se pinta desde un poco antes de ella.
+const VENTANA = 150;
+
+function pintarConversacion(mantener) {
   const cont = $('entradas');
   cont.replaceChildren();
   const s = S.actual && S.sesiones[S.actual];
-  if (s) for (const id of s.orden) cont.append(nodoEntrada(s.entradas.get(id)));
+  if (s) {
+    let desde = Math.max(0, s.orden.length - (s.mostrar || VENTANA));
+    const i = S.irA ? s.orden.indexOf(S.irA) : -1;
+    if (i >= 0 && i < desde) desde = Math.max(0, i - 20);
+    s.desde = desde;
+    if (desde > 0) {
+      const b = el('button', 'boton fino ver-anteriores', trad('Ver lo anterior ({0} más)', desde));
+      b.addEventListener('click', () => {
+        s.mostrar = s.orden.length - s.desde + 200;
+        pintarConversacion(s.orden[s.desde]);
+      });
+      cont.append(b);
+    }
+    for (const id of s.orden.slice(desde)) cont.append(nodoEntrada(s.entradas.get(id)));
+  }
   agruparAcciones(cont);
   pintarTrabajando();
+  const ancla = mantener && cont.querySelector(`[data-id="${CSS.escape(mantener)}"]`);
+  if (ancla) {
+    // Al ver lo anterior, la vista se queda donde estaba (en lo que antes era lo primero)
+    pegado = false;
+    ancla.scrollIntoView({ block: 'start' });
+    return;
+  }
   const destino = S.irA && cont.querySelector(`[data-id="${CSS.escape(S.irA)}"]`);
   if (destino) {
     const grupo = destino.closest('details.acciones');
@@ -796,6 +828,7 @@ function actualizarEntrada(sesionId, e) {
     for (const id of pendientes) {
       const nuevo = nodoEntrada(s.entradas.get(id));
       const viejo = cont.querySelector(`[data-id="${CSS.escape(id)}"]`);
+      if (!viejo && s.orden.indexOf(id) < (s.desde || 0)) continue; // es de lo anterior, que no está pintado
       if (viejo) {
         if (viejo.tagName === 'DETAILS' && viejo.open) nuevo.open = true;
         viejo.replaceWith(nuevo);
@@ -1774,6 +1807,27 @@ function formMcp(s) {
   nombre.focus();
 }
 
+// ------------------------------------------------------------------ avisos de Windows
+
+// Si MultiAgente no está delante, avisa cuando un agente termina, pide permiso o se para por un error (la aplicación
+// enseña la notificación y hace parpadear el botón de la barra de tareas)
+function avisarSiHaceFalta(sesionId, antes, ag) {
+  if (document.hasFocus() || !ag || antes === ag.estado) return;
+  const s = todasLasSesiones().find((x) => x.id === sesionId);
+  const titulo = s ? s.titulo : trad('Sesión');
+  let aviso = null;
+  if (ag.estado === 'PidePermiso')
+    aviso = [trad('«{0}» te pide permiso', titulo), (ag.permiso && ag.permiso.titulo) || ''];
+  else if (ag.estado === 'Error')
+    aviso = [trad('«{0}» se ha parado', titulo), traducir(ag.error) || ''];
+  else if (ag.estado === 'Esperando' && (antes === 'Trabajando' || antes === 'PidePermiso')) {
+    const x = S.sesiones[sesionId];
+    const ultima = x && [...x.orden].reverse().map((id) => x.entradas.get(id)).find((e) => e && e.tipo === 'agente');
+    aviso = [trad('«{0}» ha terminado', titulo), ultima ? ultima.texto.replace(/[#*`>_]/g, '').replace(/\s+/g, ' ').trim() : ''];
+  }
+  if (aviso) enviar({ tipo: 'notificar', sesionId, titulo: aviso[0], texto: aviso[1] });
+}
+
 // ------------------------------------------------------------------ mensajes de la aplicación
 
 function alRecibir(m) {
@@ -1841,11 +1895,17 @@ function alRecibir(m) {
       if (m.relevo) S.relevos[m.sesionId] = m.relevo; else delete S.relevos[m.sesionId];
       if (m.sesionId === S.actual) pintarRelevo();
       break;
-    case 'agente':
-      if (m.sesionId === S.actual && m.agente.estado === 'Esperando' && (ses(m.sesionId).agente || {}).estado !== 'Esperando') pedirCambiosLuego();
+    case 'agente': {
+      const antes = (ses(m.sesionId).agente || {}).estado;
+      if (m.sesionId === S.actual && m.agente.estado === 'Esperando' && antes !== 'Esperando') pedirCambiosLuego();
       ses(m.sesionId).agente = m.agente;
+      avisarSiHaceFalta(m.sesionId, antes, m.agente);
       pintarArbol();
       if (m.sesionId === S.actual) pintarAgente();
+      break;
+    }
+    case 'irASesion':
+      if (todasLasSesiones().some((x) => x.id === m.id)) abrirSesion(m.id);
       break;
     case 'sesionAbierta':
       cajaNueva.enviarBtn.disabled = false;
@@ -2316,12 +2376,17 @@ function edicionesDeSesion(id) {
   return porFichero;
 }
 
+// Las diferencias cuestan: cada edición se cuenta una vez (una edición que cambia llega como objeto nuevo)
+const EDICIONES_CONTADAS = new WeakMap();
 function contarEdicion(item) {
+  if (EDICIONES_CONTADAS.has(item)) return EDICIONES_CONTADAS.get(item);
   let mas = 0, menos = 0;
   for (const p of window.Diff ? Diff.diffLines(item.oldText || '', item.newText || '') : []) {
     if (p.added) mas += p.count; else if (p.removed) menos += p.count;
   }
-  return { mas, menos };
+  const r = { mas, menos };
+  EDICIONES_CONTADAS.set(item, r);
+  return r;
 }
 
 function pintarBotonCambios() {
@@ -2399,8 +2464,14 @@ function pintarActividad() {
 
 /** Baja en la conversación hasta una entrada, la abre (y su bloque de acciones) y la resalta un momento. */
 function irAEntrada(id) {
-  const n = $('entradas').querySelector(`[data-id="${CSS.escape(id)}"]`);
-  if (!n) return;
+  let n = $('entradas').querySelector(`[data-id="${CSS.escape(id)}"]`);
+  if (!n) {
+    // Es de lo anterior, que no está pintado: se pinta desde un poco antes de ella
+    S.irA = id;
+    pintarConversacion();
+    n = $('entradas').querySelector(`[data-id="${CSS.escape(id)}"]`);
+    if (!n) return;
+  }
   const grupo = n.closest('details.acciones');
   if (grupo) grupo.open = true;
   if (n.tagName === 'DETAILS') n.open = true;

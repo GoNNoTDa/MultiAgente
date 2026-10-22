@@ -24,6 +24,7 @@ public sealed class ErrorAcp(int codigo, string mensaje, JsonNode? datos = null)
 public sealed class ConexionAcp : IAsyncDisposable
 {
     private readonly Process _proceso;
+    private TrabajoProcesos? _trabajo;
     private readonly ConcurrentDictionary<long, TaskCompletionSource<JsonNode?>> _pendientes = new();
     private readonly SemaphoreSlim _escritura = new(1, 1);
     private readonly string _nombre;
@@ -74,7 +75,7 @@ public sealed class ConexionAcp : IAsyncDisposable
 
         var p = new Process { StartInfo = psi, EnableRaisingEvents = true };
         if (!p.Start()) throw new ErrorAcp(-1, $"No se pudo arrancar {orden.Ejecutable}");
-        var c = new ConexionAcp(p, nombre);
+        var c = new ConexionAcp(p, nombre) { _trabajo = TrabajoProcesos.Atar(p) };
         Registro.Info($"{nombre}: agente arrancado (pid {p.Id}) en {carpeta}");
         _ = Task.Run(c.LeerSalida);
         _ = Task.Run(c.LeerErrores);
@@ -230,6 +231,8 @@ public sealed class ConexionAcp : IAsyncDisposable
             try { _proceso.Kill(entireProcessTree: true); } catch (Exception) { }
         }
         catch (InvalidOperationException) { }
+        // Lo que el agente haya dejado en marcha (servidores MCP, órdenes en segundo plano) se cierra con él
+        _trabajo?.Dispose();
         Cerrar("cerrada por la aplicación");
         _proceso.Dispose();
         _escritura.Dispose();

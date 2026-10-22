@@ -182,6 +182,13 @@ async Task<JsonNode?> Prompt(JsonNode p)
         throw new FalloAcp(-32000, "Usage limit reached for this account");
     }
     if (texto.Contains("muere")) Environment.Exit(3);
+    if (texto.Contains("hijo"))
+    {
+        // Como un agente que deja algo en marcha (un servidor, un MCP): un proceso que sigue al cerrarse el agente
+        var hijo = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("ping", "-n 120 127.0.0.1")
+            { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true });
+        Anotar($"hijo {hijo!.Id}");
+    }
     if (texto.Contains("subagente"))
     {
         // Como Claude Code: herramienta «Agent»; lo que hace y dice el subagente lleva su id en parentToolUseId

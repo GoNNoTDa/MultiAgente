@@ -661,4 +661,5 @@ body.veterano #abajoSesion .pie>span:first-child{visibility:hidden}
 .r-frag{font-size:13px;color:var(--suave);overflow-wrap:anywhere}
 .r-frag mark,.resultado mark{background:var(--ambar-fondo);color:var(--texto);box-shadow:inset 0 -2px 0 var(--ambar-borde);border-radius:2px;padding:0 1px}
 .insignia{font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--linea2);color:var(--tenue)}
+.ver-anteriores{display:block;margin:4px auto 18px}
 #entradas .destacada{outline:2px solid var(--ambar-borde);outline-offset:4px;border-radius:8px;transition:outline-color 1s}

@@ -684,5 +684,9 @@ window.TEXTOS_en = {
  "Actividad": "Activity",
  "Tareas y subagentes de la sesión": "The session's tasks and subagents",
  "1 subagente trabajando": "1 subagent working",
- "1 subagente": "1 subagent"
+ "1 subagente": "1 subagent",
+ "Ver lo anterior ({0} más)": "See earlier ({0} more)",
+ "«{0}» te pide permiso": "«{0}» is asking for permission",
+ "«{0}» se ha parado": "«{0}» has stopped",
+ "«{0}» ha terminado": "«{0}» is done"
 };

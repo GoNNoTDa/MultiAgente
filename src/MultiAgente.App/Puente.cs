@@ -63,6 +63,9 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             case "abrirRuta":
                 AbrirRuta(Texto(m, "ruta"));
                 break;
+            case "notificar":
+                ventana.Notificar(Texto(m, "titulo") ?? "MultiAgente", Texto(m, "texto") ?? "", Texto(m, "sesionId"));
+                break;
             case "salir":
                 ventana.Salir(m.TryGetProperty("si", out var si) && si.ValueKind == JsonValueKind.True);
                 break;

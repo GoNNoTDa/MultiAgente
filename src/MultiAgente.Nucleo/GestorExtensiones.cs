@@ -56,6 +56,7 @@ public sealed partial class Gestor
         {
             CatalogoMcp.Definicion(s, _boveda);
             var faltan = s.Valores.Where(v => v.Secreto && !_boveda.Contiene(CatalogoMcp.RefSecreto(s, v.Nombre))).Select(v => v.Nombre).ToList();
+            if (CatalogoMcp.Marcas(s).Any(m => !_boveda.Contiene(CatalogoMcp.RefMarca(s, m)))) faltan.Add("un secreto de los argumentos o la dirección");
             return faltan.Count > 0 ? "falta el valor de " + string.Join(", ", faltan) : null;
         }
         catch (ExcepcionUsuario ex) { return ex.Message; }
@@ -88,6 +89,10 @@ public sealed partial class Gestor
             // Secretos que ya no están: fuera de la bóveda
             foreach (var v in lista[previo].Valores.Where(v => v.Secreto && !s.Valores.Any(n => n.Secreto && n.Nombre == v.Nombre)))
                 _boveda.Borrar(CatalogoMcp.RefSecreto(s, v.Nombre));
+            // Lo mismo con los secretos de los argumentos y la dirección cuya marca ya no está
+            var marcas = CatalogoMcp.Marcas(s);
+            foreach (var m in CatalogoMcp.Marcas(lista[previo]).Where(m => !marcas.Contains(m)))
+                _boveda.Borrar(CatalogoMcp.RefMarca(s, m));
             lista[previo] = s;
         }
         else lista.Add(s);

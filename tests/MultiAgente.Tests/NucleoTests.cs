@@ -56,6 +56,25 @@ public class RegistroTests
     [InlineData("{\"accessToken\":\"abcd1234efgh5678\",\"expiresAt\":1}", "abcd1234efgh5678")]
     [InlineData("refresh_token=zzzzyyyyxxxx1111", "zzzzyyyyxxxx1111")]
     [InlineData("google ya29.a0AfH6SMBxyz-123456", "a0AfH6SMBxyz")]
+    [InlineData("groq gsk_AbCdEfGhIjKlMnOpQrStUvWx1234", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("nvidia nvapi-AbCdEfGhIjKlMnOpQrStUv-1234", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("fireworks fw_AbCdEfGhIjKlMnOpQr12", "AbCdEfGhIjKlMnOpQr")]
+    [InlineData("grok xai-AbCdEfGhIjKlMnOpQrStUv12", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("hf hf_AbCdEfGhIjKlMnOpQrStUv12", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("openrouter sk-or-v1-0123456789abcdef0123456789abcdef", "0123456789abcdef0123")]
+    [InlineData("gh ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("oauth gho_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("pat github_pat_11ABCDEFG0123456789_abcdefghijklmnop", "11ABCDEFG0123456789")]
+    [InlineData("gitlab glpat-AbCdEfGhIjKlMnOpQrSt", "AbCdEfGhIjKlMnOpQrSt")]
+    [InlineData("slack xoxb-123456789012-abcdefghijkl", "123456789012")]
+    [InlineData("slack xoxp-123456789012-abcdefghijkl", "abcdefghijkl")]
+    [InlineData("aws AKIAIOSFODNN7EXAMPLE listo", "IOSFODNN7EXAMPLE")]
+    [InlineData("jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.SflKxwRJSMeKKF2QT4fwpM", "SflKxwRJSMeKKF2QT4fwpM")]
+    [InlineData("{\"api_key\": \"abcd1234efgh5678\"}", "abcd1234efgh5678")]
+    [InlineData("api-key=abcd1234efgh5678", "abcd1234efgh5678")]
+    [InlineData("x-api-key: abcd1234efgh5678", "abcd1234efgh5678")]
+    [InlineData("Authorization: Basic dXNlcjpwYXNzd29yZA==", "dXNlcjpwYXNzd29yZA")]
+    [InlineData("Authorization: Basic dXNlcjpwYXNz", "dXNlcjpwYXNz")]
     public void Tapa_tokens_y_claves(string texto, string secreto)
     {
         var tapado = Registro.Tapar(texto);
@@ -69,6 +88,18 @@ public class RegistroTests
         const string texto = "Sesión 7a7cb388-83c9-47c5-b00a-4485131a0ca9 abierta con la cuenta Claude · Cuenta 1 en C:\\proyectos";
         Assert.Equal(texto, Registro.Tapar(texto));
     }
+
+    [Theory]
+    [InlineData("Basic configuration del servidor")]
+    [InlineData("Abierto C:\\proyectos\\fw_utils\\hf_datos\\ghp_x")]
+    [InlineData("modelo xai-grok y nvapi-corta, sk-corta, gsk_poco")]
+    [InlineData("token caducado; pide otro")]
+    [InlineData("Authorization: Bearer")]
+    public void No_tapa_palabras_cortas_ni_rutas(string texto) => Assert.Equal(texto, Registro.Tapar(texto));
+
+    [Fact]
+    public void Autorizacion_bearer_tapa_solo_el_valor() =>
+        Assert.Equal("Authorization: Bearer •••", Registro.Tapar("Authorization: Bearer abcdefghijklmnop1234"));
 
     [Fact]
     public void Escribe_en_el_fichero_del_dia_sin_secretos()

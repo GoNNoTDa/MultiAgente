@@ -12,14 +12,41 @@ public static class Registro
     private static readonly object Cerrojo = new();
     private static string? _carpeta;
 
+    /// <summary>Claves con forma reconocible (prefijo del proveedor): todo lo que casa es secreto; el grupo 1 se conserva.</summary>
+    private static readonly (string Patron, string Sustituto)[] Formas =
+    [
+        (@"sk-ant-[A-Za-z0-9_\-]{10,}", "sk-ant-•••"),
+        (@"\bsk-or-v1-[A-Za-z0-9]{16,}", "sk-or-v1-•••"),             // OpenRouter
+        (@"\bsk-(?:proj-)?[A-Za-z0-9_\-]{16,}", "sk-•••"),
+        (@"\bAIza[0-9A-Za-z_\-]{30,}", "AIza•••"),
+        (@"\bya29\.[0-9A-Za-z_\-\.]{10,}", "ya29.•••"),
+        (@"\bgsk_[A-Za-z0-9]{20,}", "gsk_•••"),                       // Groq
+        (@"\bnvapi-[A-Za-z0-9_\-]{20,}", "nvapi-•••"),                // NVIDIA
+        (@"\bfw_[A-Za-z0-9]{16,}", "fw_•••"),                         // Fireworks
+        (@"\bxai-[A-Za-z0-9]{20,}", "xai-•••"),                       // xAI
+        (@"\bcsk-[A-Za-z0-9]{20,}", "csk-•••"),                       // Cerebras
+        (@"\bvck_[A-Za-z0-9]{20,}", "vck_•••"),                       // Vercel
+        (@"\btgp_v1_[A-Za-z0-9_\-]{20,}", "tgp_v1_•••"),              // Together
+        (@"\bhf_[A-Za-z0-9]{20,}", "hf_•••"),                         // Hugging Face
+        (@"\bgithub_pat_[A-Za-z0-9_]{20,}", "github_pat_•••"),
+        (@"\b(gh[pousr]_)[A-Za-z0-9]{20,}", "$1•••"),                 // GitHub
+        (@"\bglpat-[A-Za-z0-9_\-]{20,}", "glpat-•••"),                // GitLab
+        (@"\b(xox[abprs]-)[A-Za-z0-9\-]{10,}", "$1•••"),              // Slack
+        (@"\bAKIA[0-9A-Z]{16}\b", "AKIA•••"),                         // AWS
+        (@"\beyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}", "eyJ•••"), // JWT
+    ];
+
+    /// <summary>Cualquiera de las <see cref="Formas"/> (para buscar claves sueltas, p. ej. en argumentos de un MCP).</summary>
+    public static readonly Regex FormaDeClave = new(string.Join("|", Formas.Select(f => "(?:" + f.Patron + ")")), RegexOptions.Compiled);
+
     private static readonly (Regex Patron, string Sustituto)[] Secretos =
     [
-        (new Regex(@"sk-ant-[A-Za-z0-9_\-]{10,}", RegexOptions.Compiled), "sk-ant-•••"),
-        (new Regex(@"\bsk-(?:proj-)?[A-Za-z0-9_\-]{16,}", RegexOptions.Compiled), "sk-•••"),
-        (new Regex(@"\bAIza[0-9A-Za-z_\-]{30,}", RegexOptions.Compiled), "AIza•••"),
-        (new Regex(@"\bya29\.[0-9A-Za-z_\-\.]{10,}", RegexOptions.Compiled), "ya29.•••"),
+        .. Formas.Select(f => (new Regex(f.Patron, RegexOptions.Compiled), f.Sustituto)),
         (new Regex(@"(?i)(\bbearer\s+)[A-Za-z0-9._\-~+/=]{12,}", RegexOptions.Compiled), "$1•••"),
-        (new Regex(@"(?i)(""?(?:access_?token|refresh_?token|id_?token|api_?key|apikey|client_?secret|password|token)""?\s*[:=]\s*""?)[^""\s,}]{6,}",
+        // Basic: base64 con algún dígito o signo, para no tapar «Basic configuration»
+        (new Regex(@"(\bBasic\s+)(?=[A-Za-z0-9+/]*[0-9+/=])[A-Za-z0-9+/]{8,}={0,2}", RegexOptions.Compiled), "$1•••"),
+        (new Regex(@"(?i)(""?\bauthorization""?\s*[:=]\s*""?(?:(?:basic|bearer|token|digest)\s+)?)(?!(?:basic|bearer|token|digest)\b)[^""\s,}•]{6,}", RegexOptions.Compiled), "$1•••"),
+        (new Regex(@"(?i)(""?(?:access[_\-]?token|refresh[_\-]?token|id[_\-]?token|api[_\-]?key|apikey|client[_\-]?secret|password|token)""?\s*[:=]\s*""?)[^""\s,}]{6,}",
             RegexOptions.Compiled), "$1•••"),
     ];
 

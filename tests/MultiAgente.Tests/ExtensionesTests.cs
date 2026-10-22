@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MultiAgente.Datos;
 using MultiAgente.Nucleo;
 using MultiAgente.Nucleo.Acp;
@@ -91,6 +92,91 @@ public class McpTests
         Assert.Equal("X-Equipo", http["headers"]![0]!["name"]!.GetValue<string>());
 
         Assert.Throws<ExcepcionUsuario>(() => CatalogoMcp.Definicion(new ServidorMcpDef { Nombre = "y", Comando = "no-existe-123" }, boveda, bin));
+    }
+
+    [Theory]
+    [InlineData("GITHUB_PAT", "abc123", true)]
+    [InlineData("DATABASE_URL", "postgres://yo:clave1@db/base", true)]
+    [InlineData("DATABASE_URL", "postgres://db/base", false)]
+    [InlineData("PG_DSN", "host=db password=x", true)]
+    [InlineData("SESSION_COOKIE", "abc", true)]
+    [InlineData("AUTH_HEADER", "abc", true)]
+    [InlineData("MI_VARIABLE", "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz012345", true)]
+    [InlineData("PATH", @"C:\bin", false)]
+    [InlineData("KEY_FILE", @"C:\claves\id.pem", false)]
+    [InlineData("API_KEY", "${API_KEY}", false)]
+    public void Reconoce_nombres_y_valores_secretos(string nombre, string valor, bool secreto) =>
+        Assert.Equal(secreto, CatalogoMcp.EsSecreto(nombre, valor));
+
+    [Fact]
+    public void Los_secretos_de_argumentos_y_direcciones_van_a_la_boveda_y_llegan_a_la_sesion()
+    {
+        using var c = new CarpetaPrueba("mcp");
+        const string pat = "ghp_AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+        c.Fichero(".claude.json", $$"""
+            { "mcpServers": {
+                "busca": { "command": "npx", "args": ["-y", "srv-busca", "--api-key", "clave-arg-111", "--token=clave-arg-222", "--modo", "ro"] },
+                "suelta": { "command": "npx", "args": ["srv", "{{pat}}", "--session-dir", "C:\\sesiones"] },
+                "remoto": { "type": "http", "url": "https://mcp.ejemplo.com/mcp?token=clave-url-333&region=eu" } } }
+            """);
+        c.Fichero(@".gemini\settings.json", """
+            { "mcpServers": { "base": { "command": "npx", "args": ["srv-pg", "postgres://yo:clave-pg-444@db.ejemplo.com/base"],
+                                        "env": { "GITHUB_PAT": "clave-env-555", "DATABASE_URL": "postgres://yo:clave-env-666@db/base" } },
+                              "sse": { "url": "https://yo:clave-sse-777@sse.ejemplo.com/sse?api_key=clave-sse-888" } } }
+            """);
+        c.Fichero(@".codex\config.toml", """
+            [mcp_servers.docker]
+            command = "npx"
+            args = ["docker", "-e", "GITHUB_TOKEN=clave-toml-999", "--password", "${CLAVE_DEL_USUARIO}"]
+            """);
+        string[] secretos = ["clave-arg-111", "clave-arg-222", pat, "clave-url-333", "clave-pg-444", "clave-env-555", "clave-env-666",
+                             "clave-sse-777", "clave-sse-888", "clave-toml-999"];
+        var bin = Path.Combine(c.Ruta, "bin");
+        c.Fichero(@"bin\npx.exe", "");
+        var boveda = new Boveda(Path.Combine(c.Ruta, "boveda.bin"));
+        using var bd = BaseDatos.Abrir(Path.Combine(c.Ruta, "multiagente.db"));
+        var repo = new Repositorio(bd);
+
+        var importados = ImportarMcp.Buscar(c.Ruta);
+        Assert.Equal(6, importados.Count);
+        CatalogoMcp.Guardar(repo, importados.Select(s => CatalogoMcp.GuardarSecretos(s, boveda)).ToList());
+
+        // En la base no queda ningún secreto, pero sí lo que no lo es
+        var json = repo.LeerAjuste("mcp")!;
+        foreach (var x in secretos) Assert.DoesNotContain(x, json);
+        Assert.Contains("{{secreto:", json);
+        Assert.Contains("region=eu", json);
+        Assert.Contains("--modo", json);
+        Assert.Contains(@"C:\\sesiones", json);
+        Assert.Contains("${CLAVE_DEL_USUARIO}", json);
+
+        // Editar y guardar sin cambiar nada (la interfaz devuelve las marcas tal cual) conserva los secretos
+        var lista = CatalogoMcp.Cargar(repo);
+        CatalogoMcp.Guardar(repo, lista.Select(s => CatalogoMcp.GuardarSecretos(s, boveda)).ToList());
+        Assert.Equal(json, repo.LeerAjuste("mcp"));
+        lista = CatalogoMcp.Cargar(repo);
+        foreach (var s in lista)
+            foreach (var m in CatalogoMcp.Marcas(s)) Assert.True(boveda.Contiene(CatalogoMcp.RefMarca(s, m)));
+
+        // A la sesión llegan los valores reales
+        var sesion = CatalogoMcp.ParaSesion(lista, boveda, bin).ToDictionary(m => m.Nombre, m => m.Definicion.ToJsonString());
+        Assert.Equal(6, sesion.Count);
+        string Args(string n) => string.Join(" ", JsonNode.Parse(sesion[n])!["args"]!.AsArray().Select(a => a!.GetValue<string>()));
+        Assert.Equal("-y srv-busca --api-key clave-arg-111 --token=clave-arg-222 --modo ro", Args("busca"));
+        Assert.Equal($@"srv {pat} --session-dir C:\sesiones", Args("suelta"));
+        Assert.Equal("srv-pg postgres://yo:clave-pg-444@db.ejemplo.com/base", Args("base"));
+        Assert.Equal("docker -e GITHUB_TOKEN=clave-toml-999 --password ", Args("docker")); // ${…} sin definir: vacío
+        Assert.Equal("https://mcp.ejemplo.com/mcp?token=clave-url-333&region=eu", JsonNode.Parse(sesion["remoto"])!["url"]!.GetValue<string>());
+        Assert.Equal("https://yo:clave-sse-777@sse.ejemplo.com/sse?api_key=clave-sse-888", JsonNode.Parse(sesion["sse"])!["url"]!.GetValue<string>());
+        var env = JsonNode.Parse(sesion["base"])!["env"]!.AsArray().ToDictionary(v => v!["name"]!.GetValue<string>(), v => v!["value"]!.GetValue<string>());
+        Assert.Equal(("clave-env-555", "postgres://yo:clave-env-666@db/base"), (env["GITHUB_PAT"], env["DATABASE_URL"]));
+
+        // Al borrar el servidor se van también sus secretos de la bóveda
+        var busca = lista.Single(s => s.Nombre == "busca");
+        var refs = CatalogoMcp.Marcas(busca).Select(m => CatalogoMcp.RefMarca(busca, m)).ToList();
+        Assert.Equal(2, refs.Count);
+        CatalogoMcp.BorrarSecretos(busca, boveda);
+        Assert.All(refs, r => Assert.False(boveda.Contiene(r)));
     }
 }
 
@@ -206,7 +292,7 @@ public class GestorExtensionesTests
         Directory.CreateDirectory(Path.Combine(c.Ruta, "proyecto"));
         var perfil = Path.Combine(c.Ruta, "perfil");
         File.WriteAllText(Path.Combine(Directory.CreateDirectory(perfil).FullName, ".claude.json"),
-            """{ "mcpServers": { "local": { "command": "dotnet", "args": ["--info"], "env": { "API_KEY": "k-123" } }, "remoto": { "type": "http", "url": "https://x/mcp" } } }""");
+            """{ "mcpServers": { "local": { "command": "dotnet", "args": ["--info"], "env": { "API_KEY": "k-123" } }, "remoto": { "type": "http", "url": "https://x/mcp?token=k-url-789" } } }""");
         Directory.CreateDirectory(Path.Combine(perfil, ".claude", "skills", "mi-skill"));
         File.WriteAllText(Path.Combine(perfil, ".claude", "skills", "mi-skill", "SKILL.md"), "---\nname: mi-skill\ndescription: prueba\n---\n");
         using var bd = BaseDatos.Abrir(rutas.BaseDatos);
@@ -228,6 +314,16 @@ public class GestorExtensionesTests
             Assert.Empty(await bucle.Ejecutar(() => gestor.McpImportables())); // ya están
             var guardado = new Repositorio(bd).LeerAjuste("mcp")!;
             Assert.DoesNotContain("k-123", guardado); // la clave, a la bóveda
+            Assert.DoesNotContain("k-url-789", guardado); // y el token de la dirección también
+
+            // Editarlo desde la interfaz y guardarlo sin tocar la dirección (llega con la marca) no pierde el token
+            var remoto = CatalogoMcp.Cargar(new Repositorio(bd)).Single(s => s.Nombre == "remoto");
+            Assert.Contains("{{secreto:", remoto.Url);
+            remoto.Agentes = ["Claude"];
+            await bucle.Ejecutar(() => { gestor.GuardarMcp(remoto); return true; });
+            remoto = CatalogoMcp.Cargar(new Repositorio(bd)).Single(s => s.Nombre == "remoto");
+            Assert.Equal(["Claude"], remoto.Agentes);
+            Assert.Equal("https://x/mcp?token=k-url-789", CatalogoMcp.Definicion(remoto, new Boveda(rutas.Boveda))["url"]!.GetValue<string>());
 
             Assert.Equal(1, await bucle.Ejecutar(() => gestor.ImportarExtensiones("skills", gestor.Importables("skills").Select(e => e.Ruta))));
             await bucle.Ejecutar(() => { gestor.GuardarInstrucciones("Responde siempre en castellano."); return true; });

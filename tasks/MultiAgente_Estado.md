@@ -161,3 +161,17 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
   siempre baja. Además, reabrir una sesión a mitad de turno manda también lo del turno en curso (`SesionAgente.Conversacion`).
   (2) Un borrador por sesión (texto y adjuntos): ya no se comparte la caja entre conversaciones; el texto se guarda
   también para la próxima vez. Pruebas: 161.
+- 22/10 (4) Robustez y avisos (bloques 2 y 3 del plan acordado con el usuario):
+  (1) Procesos: cada agente va en su «job» de Windows (`Acp/TrabajoProcesos`, KILL_ON_JOB_CLOSE): al cerrar la sesión mueren
+  él y lo que haya lanzado (servidores, MCP), y si MultiAgente se cierra, se cuelga o lo matan, Windows los cierra. También
+  `claude -p` del resumen vivo. No van en un job lo que abre el usuario (autorizar, documentos). Al salir, los agentes se
+  cierran a la vez; un turno que termina con la sesión ya cerrada no lanza relevo ni resumen.
+  (2) Rendimiento: el texto que llega a trozos se agrupa (un aviso cada 60 ms como mucho, en orden con lo demás); la
+  conversación pinta las últimas 150 entradas con «Ver lo anterior»; las sesiones que no se miran ni trabajan sueltan su
+  conversación; las ediciones se cuentan una vez.
+  (3) Secretos: argumentos y direcciones de los MCP con claves van a la bóveda (marca `{{secreto:…}}` en la base); más
+  nombres secretos (PAT, DSN, cookie, session); el registro tapa los prefijos de los proveedores del catálogo y otros
+  comunes, api-key/x-api-key y Authorization Basic. Prueba de una base del esquema 1 con datos que se pone al día.
+  (4) Avisos de Windows (`AvisosWindows`): si MultiAgente no está delante, notificación al terminar un turno, al pedir
+  permiso o al pararse por un error, y el botón de la barra de tareas parpadea; al pulsarla se abre la sesión.
+  Pruebas: 199.

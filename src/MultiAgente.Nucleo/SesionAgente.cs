@@ -354,7 +354,7 @@ public sealed class SesionAgente : IAsyncDisposable
             {
                 var yo = new Entrada { Tipo = "usuario", Texto = m.Texto, Adjuntos = m.Adjuntos.Count > 0 ? [.. m.Adjuntos] : null, Cuenta = Cuenta.Alias };
                 Hilo.Guardar(yo);
-                EntradaCambiada?.Invoke(this, yo.Clonar());
+                Emitir(yo.Clonar());
                 var bloques = Bloques(m.Texto, m.Adjuntos);
                 TurnoDesde = DateTime.Now;
                 PonerEstado(EstadoSesion.Trabajando);
@@ -601,7 +601,7 @@ public sealed class SesionAgente : IAsyncDisposable
             if (tipo == "agente") Limpiar(e);
             e = e.Clonar();
         }
-        EntradaCambiada?.Invoke(this, e);
+        Emitir(e, agrupable: true);
     }
 
     private void TextoDeSubagente(string padre, string texto)
@@ -615,7 +615,7 @@ public sealed class SesionAgente : IAsyncDisposable
             if (sub.Texto.Length > 4000) sub.Texto = sub.Texto[^4000..]; // basta con lo último que ha dicho
             e = sub.Clonar();
         }
-        EntradaCambiada?.Invoke(this, e);
+        Emitir(e, agrupable: true);
     }
 
     /// <summary>Aviso que Codex repite en cada turno con modelos que no son de OpenAI: no aporta nada en la conversación.</summary>
@@ -697,7 +697,7 @@ public sealed class SesionAgente : IAsyncDisposable
             if (u["rawInput"] is { } ri) e.Datos = ri.DeepClone();
             e = e.Clonar();
         }
-        EntradaCambiada?.Invoke(this, e);
+        Emitir(e);
     }
 
     /// <summary>
@@ -733,14 +733,14 @@ public sealed class SesionAgente : IAsyncDisposable
             plan.Pasos = pasos?.DeepClone();
             e = plan.Clonar();
         }
-        EntradaCambiada?.Invoke(this, e);
+        Emitir(e);
     }
 
     private void Avisar(string texto, string nivel)
     {
         var e = new Entrada { Tipo = "aviso", Texto = texto, Nivel = nivel, Cuenta = Cuenta.Alias };
         lock (_cerrojo) _turno.Add(e);
-        EntradaCambiada?.Invoke(this, e.Clonar());
+        Emitir(e.Clonar());
     }
 
     /// <summary>
@@ -759,8 +759,44 @@ public sealed class SesionAgente : IAsyncDisposable
         return todas;
     }
 
+    // El texto llega a trozos y cada aviso lleva la entrada entera: se agrupan (como mucho uno cada 60 ms) para no mandar
+    // a la interfaz el mensaje completo con cada trozo. Lo demás sale en seguida, después del texto pendiente (en orden).
+    private readonly object _cerrojoEmision = new();
+    private Entrada? _pendiente;
+    private bool _vaciadoProgramado;
+
+    private void Emitir(Entrada e, bool agrupable = false)
+    {
+        lock (_cerrojoEmision)
+        {
+            if (agrupable)
+            {
+                if (_pendiente is not null && _pendiente.Id != e.Id) EntradaCambiada?.Invoke(this, _pendiente);
+                _pendiente = e;
+                if (_vaciadoProgramado) return;
+                _vaciadoProgramado = true;
+                _ = Task.Delay(60).ContinueWith(_ => VaciarEmisiones(), TaskScheduler.Default);
+                return;
+            }
+            if (_pendiente is not null) { EntradaCambiada?.Invoke(this, _pendiente); _pendiente = null; }
+            EntradaCambiada?.Invoke(this, e);
+        }
+    }
+
+    private void VaciarEmisiones()
+    {
+        lock (_cerrojoEmision)
+        {
+            _vaciadoProgramado = false;
+            if (_pendiente is null) return;
+            EntradaCambiada?.Invoke(this, _pendiente);
+            _pendiente = null;
+        }
+    }
+
     private void CerrarTurno()
     {
+        VaciarEmisiones(); // lo último que ha escrito llega antes que el fin del turno
         List<Entrada> turno;
         lock (_cerrojo)
         {

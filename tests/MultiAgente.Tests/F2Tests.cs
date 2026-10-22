@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using MultiAgente.Datos;
 using MultiAgente.Nucleo;
 
@@ -77,6 +78,88 @@ public class RepositorioTests
         var f = Path.Combine(c.Ruta, "m.db");
         using (var bd = BaseDatos.Abrir(f)) Assert.Equal(BaseDatos.VersionEsquema, bd.Version);
         Assert.True(BaseDatos.VersionEsquema >= 2);
+    }
+
+    [Fact]
+    public void Una_base_antigua_con_datos_se_pone_al_dia_sin_perder_nada()
+    {
+        using var c = new CarpetaPrueba("esq1");
+        var f = Path.Combine(c.Ruta, "multiagente.db");
+        // Base tal como la dejaba la primera versión: solo el paso 1 del esquema (se lee el de verdad, que nunca cambia)
+        var pasos = (string[])typeof(BaseDatos).Assembly.GetType("MultiAgente.Datos.Esquema")!.GetField("Pasos")!.GetValue(null)!;
+        using (var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = f, Pooling = false }.ToString()))
+        {
+            raw.Open();
+            using var cmd = raw.CreateCommand();
+            cmd.CommandText = "PRAGMA foreign_keys = ON;\n" + pasos[0] + """
+
+                PRAGMA user_version = 1;
+                INSERT INTO Ajuste VALUES ('idioma', 'es');
+                INSERT INTO Proyecto VALUES ('p1', 'web', 'C:\web', NULL, 0, 0), ('p2', 'api', 'C:\api', NULL, 1, 1);
+                INSERT INTO Cuenta (Id, Alias, Proveedor, Tipo, Carpeta, RefClave, Umbrales, Presupuesto, Orden, Creada) VALUES
+                    ('c1', 'Personal', 'Claude', 'Login', 'datos\cuentas\personal', NULL, '{"5h":80}', NULL, 0, '2026-01-05T10:00:00.0000000Z'),
+                    ('c2', 'Trabajo', 'Codex', 'Api', 'datos\cuentas\trabajo', 'cuenta:c2', NULL, 25.5, 1, '2026-01-06T11:30:00.0000000Z');
+                INSERT INTO Equipo VALUES ('e1', 'Todas', 'Rotacion', 0, 30, 1);
+                INSERT INTO EquipoCuenta VALUES ('e1', 'c2', 0), ('e1', 'c1', 1);
+                INSERT INTO Sesion (Id, ProyectoId, Titulo, Carpeta, EquipoId, CuentaFija, Modelo, Esfuerzo, ModoPermisos, Estado, Creada, UltimoUso, Archivada) VALUES
+                    ('s1', 'p1', 'Arreglar el login', 'C:\web', 'e1', NULL, 'opus', 'alto', 'plan', 'Cerrada', '2026-01-07T09:00:00.0000000Z', '2026-01-08T09:00:00.0000000Z', 0),
+                    ('s2', 'p2', 'Vieja', 'C:\api', NULL, 'c1', NULL, NULL, NULL, 'Cerrada', '2026-01-02T09:00:00.0000000Z', '2026-01-03T09:00:00.0000000Z', 1);
+                INSERT INTO Tramo VALUES
+                    ('s1', 1, 'c1', 'nativa-1', '2026-01-07T09:00:00.0000000Z', '2026-01-07T12:00:00.0000000Z', NULL),
+                    ('s1', 2, 'c2', 'nativa-2', '2026-01-07T12:00:00.0000000Z', NULL, 'límite');
+                INSERT INTO Consumo VALUES ('c1', '2026-01-07T12:00:00.0000000Z', '5h', 97.5, '2026-01-07T15:00:00.0000000Z', NULL);
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using var bd = BaseDatos.Abrir(f);
+        var repo = new Repositorio(bd);
+        Assert.Equal(BaseDatos.VersionEsquema, bd.Version);
+        Assert.Contains("UsoTurno", bd.Tablas());
+        Assert.Equal("es", repo.LeerAjuste("idioma"));
+
+        // Cuentas: los datos de antes siguen; las columnas nuevas, vacías (sin endpoint, modelo ni umbrales propios)
+        var cuentas = repo.Cuentas();
+        Assert.Equal(["c1", "c2"], cuentas.Select(x => x.Id));
+        var (c1, c2) = (cuentas[0], cuentas[1]);
+        Assert.Equal(("Personal", "Claude", TipoCuenta.Login, @"datos\cuentas\personal", (string?)null), (c1.Alias, c1.Proveedor, c1.Tipo, c1.Carpeta, c1.RefClave));
+        Assert.Equal(("Trabajo", "Codex", TipoCuenta.Api, "cuenta:c2", (double?)25.5), (c2.Alias, c2.Proveedor, c2.Tipo, c2.RefClave, c2.Presupuesto));
+        Assert.Equal(new DateTime(2026, 1, 6, 11, 30, 0, DateTimeKind.Utc), c2.Creada.ToUniversalTime());
+        Assert.All(cuentas, x => Assert.True(x.Endpoint is null && x.Modelo is null && x.Catalogo is null && x.Umbral5h is null && x.UmbralSemana is null));
+
+        // Proyectos (el oculto sigue oculto) y sesiones con su proyecto, equipo y cuenta fija (el paso 4 rehace Proyecto)
+        Assert.Equal(("p1", "web", @"C:\web"), repo.Proyectos().Select(p => (p.Id, p.Nombre, p.Ruta)).Single());
+        Assert.Equal(1L, Escalar(bd, "SELECT Oculto FROM Proyecto WHERE Id = 'p2'"));
+        var s1 = repo.Sesion("s1")!;
+        Assert.Equal(("p1", "Arreglar el login", "e1", "opus", "alto", "plan", false), (s1.ProyectoId, s1.Titulo, s1.EquipoId, s1.Modelo, s1.Esfuerzo, s1.ModoPermisos, s1.Archivada));
+        var s2 = Assert.Single(repo.Sesiones(archivadas: true));
+        Assert.Equal(("s2", "p2", "c1"), (s2.Id, s2.ProyectoId, s2.CuentaId));
+        var tramo = repo.UltimoTramo("s1")!;
+        Assert.Equal((2, "c2", "nativa-2", "límite", (DateTime?)null), (tramo.Orden, tramo.CuentaId, tramo.SesionNativa, tramo.Motivo, tramo.Hasta));
+        Assert.Equal(2L, Escalar(bd, "SELECT COUNT(*) FROM Tramo"));
+        Assert.Equal(1L, Escalar(bd, "SELECT COUNT(*) FROM Consumo"));
+
+        var e = Assert.Single(repo.Equipos());
+        Assert.Equal(("Todas", ReglaReparto.Rotacion, false, 30, true), (e.Nombre, e.Regla, e.PermiteOtroProveedor, e.CuentaAtras, e.Predeterminado));
+        Assert.Equal(["c2", "c1"], e.Miembros);
+
+        // Sin claves ajenas rotas, y ya se puede repetir carpeta en otro proyecto (lo que trae el esquema 4)
+        Assert.Null(Escalar(bd, "PRAGMA foreign_key_check"));
+        repo.GuardarProyecto(new Proyecto { Id = "p3", Nombre = "web (ideas)", Ruta = @"C:\web" });
+        Assert.Equal(2, repo.Proyectos().Count);
+        // Y las tablas nuevas funcionan
+        repo.GuardarUso(new UsoTurno { SesionId = "s1", CuentaId = "c2", Momento = DateTime.UtcNow, Entrada = 10, Salida = 5, Total = 15 });
+        Assert.Single(repo.Usos(DateTime.UtcNow.AddMinutes(-1)));
+    }
+
+    private static object? Escalar(BaseDatos bd, string sql)
+    {
+        using var raw = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = bd.Fichero, Pooling = false, Mode = SqliteOpenMode.ReadOnly }.ToString());
+        raw.Open();
+        using var cmd = raw.CreateCommand();
+        cmd.CommandText = sql;
+        var v = cmd.ExecuteScalar();
+        return v is DBNull ? null : v;
     }
 }
 

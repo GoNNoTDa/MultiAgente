@@ -87,7 +87,8 @@ public class AgenteTests
         Assert.Equal("Recibido: hola agente", TextoAgente(a));
         Assert.Contains(a.Hilo.Entradas, e => e.Tipo == "pensamiento");
         Assert.Contains(a.Hilo.Entradas, e => e is { Tipo: "usuario", Texto: "hola agente", Cuenta: "Prueba" });
-        lock (cambios) Assert.True(cambios.Count(e => e.Tipo == "agente") > 1, "el texto debería llegar a trozos");
+        // Los trozos se agrupan (no un aviso por trozo); lo que cuenta es que el último lleve el texto entero
+        lock (cambios) Assert.Equal("Recibido: hola agente", cambios.Last(e => e.Tipo == "agente").Texto);
 
         var releido = new Hilo(a.Hilo.Carpeta);
         Assert.Equal(a.Hilo.Cuantas, releido.Cuantas);
@@ -247,6 +248,24 @@ public class AgenteTests
         await using var mala = Crear(c2, tipo: TipoCuenta.Api, clave: "otra", extra: new() { ["FALSO_CLAVE_ESPERADA"] = "clave-buena" });
         var ex = await Assert.ThrowsAsync<ExcepcionUsuario>(() => mala.Arrancar());
         Assert.True(ex.Message.Contains("clave de API"), ex.Message);
+    }
+
+    [Fact]
+    public async Task Al_cerrar_la_sesion_no_quedan_vivos_los_procesos_que_lanzo_el_agente()
+    {
+        var m = await Arrancado("agente");
+        try
+        {
+            m.Agente.Enviar("deja un hijo en marcha");
+            await EsperarTurno(m.Agente, 2);
+            var linea = m.LeerRegistro().Split('\n').First(l => l.StartsWith("hijo "));
+            using var hijo = System.Diagnostics.Process.GetProcessById(int.Parse(linea[5..].Trim()));
+            Assert.False(hijo.HasExited);
+
+            await m.Agente.DisposeAsync(); // el agente termina bien (sin matarlo): antes, su hijo seguía vivo
+            Assert.True(hijo.WaitForExit(5000), "el proceso que lanzó el agente sigue vivo");
+        }
+        finally { m.Carpeta.Dispose(); }
     }
 
     [Fact]

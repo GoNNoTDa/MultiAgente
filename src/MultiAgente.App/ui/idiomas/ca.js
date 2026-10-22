@@ -684,5 +684,9 @@ window.TEXTOS_ca = {
  "Actividad": "Activitat",
  "Tareas y subagentes de la sesión": "Tasques i subagents de la sessió",
  "1 subagente trabajando": "1 subagent treballant",
- "1 subagente": "1 subagent"
+ "1 subagente": "1 subagent",
+ "Ver lo anterior ({0} más)": "Veure l'anterior ({0} més)",
+ "«{0}» te pide permiso": "«{0}» et demana permís",
+ "«{0}» se ha parado": "«{0}» s'ha aturat",
+ "«{0}» ha terminado": "«{0}» ha acabat"
 };

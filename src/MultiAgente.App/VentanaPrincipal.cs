@@ -24,6 +24,7 @@ public partial class VentanaPrincipal : Form
     private readonly bool _fuera;
     private Puente? _puente;
     private Gestor? _servicio;
+    private AvisosWindows? _avisos;
     private CoreWebView2Environment? _entorno;
     private bool _cerrando;
     private int _cerrada;
@@ -212,10 +213,22 @@ public partial class VentanaPrincipal : Form
         e.Cancel = true;
         _cerrando = true;
         Hide();
+        _avisos?.Dispose(); // si no, su icono se queda en la bandeja
         _ = CerrarTodo();
     }
 
     /// <summary>Respuesta a «¿salir con sesiones trabajando?».</summary>
+    /// <summary>
+    /// Avisa de algo de una sesión (termina, pide permiso, error) si MultiAgente no está delante: notificación de Windows
+    /// y botón de la barra de tareas parpadeando. Al pulsar la notificación se abre esa sesión.
+    /// </summary>
+    internal void Notificar(string titulo, string texto, string? sesionId)
+    {
+        if (_fuera || (ActiveForm == this && WindowState != FormWindowState.Minimized)) return;
+        _avisos ??= new AvisosWindows(this, id => Enviar(new { tipo = "irASesion", id }));
+        _avisos.Mostrar(titulo, texto, sesionId);
+    }
+
     internal void Salir(bool si)
     {
         _preguntandoSalir = false;
