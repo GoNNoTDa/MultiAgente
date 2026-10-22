@@ -127,7 +127,7 @@ public sealed partial class Gestor : IAsyncDisposable
             resumenVivo = ResumenVivoActivo,
             cuentas = cuentas.Select(c =>
             {
-                var e = _estados.GetValueOrDefault(c.Id);
+                var e = _estados.GetValueOrDefault(c.Id)?.AHora(ahora);
                 return new
                 {
                     c.Id, c.Alias, c.Proveedor, tipo = c.Tipo.ToString(), c.Endpoint, c.Modelo, c.Catalogo,
@@ -175,7 +175,7 @@ public sealed partial class Gestor : IAsyncDisposable
     private List<Candidata> Candidatas(List<Cuenta>? cuentas = null) =>
         (cuentas ?? _repo.Cuentas()).Select(c => new Candidata(c,
             Instalado(c.Proveedor) && SinFallo(() => _op.Autorizada(c, _rutas, _boveda)) && ProblemaDeCuenta(c) is null,
-            _estados.GetValueOrDefault(c.Id))).ToList();
+            _estados.GetValueOrDefault(c.Id)?.AHora(DateTime.Now))).ToList();
 
     // ================================================================= cuentas
 
@@ -551,7 +551,7 @@ public sealed partial class Gestor : IAsyncDisposable
         foreach (var c in _repo.Cuentas())
         {
             var previo = _estados.GetValueOrDefault(c.Id);
-            var cada = previo?.Peor > 80 ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(3);
+            var cada = previo?.AHora(ahora).Peor > 80 ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(3);
             if (!todas && _consultado.TryGetValue(c.Id, out var ultima) && ahora - ultima < cada) continue;
             _consultado[c.Id] = ahora;
             EstadoCuenta? nuevo;
@@ -816,7 +816,7 @@ public sealed partial class Gestor : IAsyncDisposable
             traspasoDe = $"«{anterior.Alias}» ({Proveedores.Buscar(anterior.Proveedor)?.Nombre ?? anterior.Proveedor})";
 
         var mcp = CatalogoMcp.ParaSesion(CatalogoMcp.Cargar(_repo), _boveda, proveedor: p.Id);
-        var a = new SesionAgente(s, cuenta, p, orden, entorno, hilo, nativa, mcp) { TraspasoDe = traspasoDe };
+        var a = new SesionAgente(s, cuenta, p, orden, entorno, hilo, nativa, mcp) { TraspasoDe = traspasoDe, CosteYaContado = CosteYaContado(nativa) };
         _vivas[s.Id] = a;
         a.Cambiado += x => _enUi(() =>
         {
@@ -854,6 +854,17 @@ public sealed partial class Gestor : IAsyncDisposable
             _enviar(new { tipo = "agente", sesionId = s.Id, agente = Agente(a) });
             throw;
         }
+    }
+
+    // El coste acumulado de cada sesión nativa ya contado, para no volver a sumarlo al recuperarla
+    private double? CosteYaContado(string? nativa) =>
+        nativa is not null && double.TryParse(_repo.LeerAjuste("coste:" + nativa), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var c) ? c : null;
+
+    private void GuardarCosteContado(SesionAgente a)
+    {
+        if (a.SesionNativa is { } nativa && a.CosteAcumulado is { } c)
+            _repo.GuardarAjuste("coste:" + nativa, c.ToString("R", System.Globalization.CultureInfo.InvariantCulture));
     }
 
     private void GuardarTramo(SesionAgente a, string nativa)
@@ -994,6 +1005,11 @@ public sealed partial class Gestor : IAsyncDisposable
         _repo.GuardarSesion(s);
         EnviarEstado();
     }
+
+    /// <summary>Títulos de las sesiones a mitad de un turno o pidiendo permiso: al salir se cortarían.</summary>
+    public IReadOnlyList<string> Ocupadas() => _vivas.Values
+        .Where(a => a.Estado is EstadoSesion.Trabajando or EstadoSesion.PidePermiso)
+        .Select(a => a.Sesion.Titulo ?? "Sesión nueva").ToList();
 
     /// <summary>Estado de un agente vivo (pruebas y diagnóstico).</summary>
     public SesionAgente? Viva(string sesionId) => _vivas.GetValueOrDefault(sesionId);

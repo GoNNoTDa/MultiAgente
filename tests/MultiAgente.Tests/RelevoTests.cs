@@ -157,6 +157,10 @@ public class RelevoTests
         Assert.Contains(entradas, e => e.Tipo == "relevo" && e.Texto!.StartsWith("Sigue en «Claude B»"));
         Assert.Contains(entradas, e => e is { Tipo: "aviso", Nivel: "limite" });
         Assert.Equal(nativa, await m.En(() => m.Gestor.Viva(id)!.SesionNativa));
+        // Dos turnos de 0,25 $; la cuenta B recupera la sesión, cuyo total ya incluye el de A, y no lo cuenta otra vez
+        double Costes() => new Repositorio(m.Bd).Usos(DateTime.Today).Where(u => u.SesionId == id).Sum(u => u.Coste ?? 0);
+        await Esperar(async () => await m.En(Costes) >= 0.5, "uso del segundo turno");
+        Assert.Equal(0.5, await m.En(Costes), 3);
 
         // La cuenta A queda enfriando y el estado lo dice
         var estado = await m.En(() => JsonSerializer.SerializeToElement(m.Gestor.Estado(), Json.Opciones));
@@ -288,6 +292,22 @@ public class RelevoTests
         await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Error), "agente caído otra vez");
         await m.En(() => m.Gestor.Enviar(id, "otra vez", []));
         await EsperarRespuesta(m, id, "Recibido: otra vez");
+    }
+
+    [Fact]
+    public async Task Ocupadas_dice_que_sesiones_se_cortarian_al_salir()
+    {
+        await using var m = await Montar(("Claude A", "Claude"));
+        var id = await Nueva(m, "hola");
+        Assert.Empty(await m.En(() => m.Gestor.Ocupadas()));
+
+        await m.En(() => m.Gestor.Enviar(id, "escribe lento", []));
+        await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Trabajando), "trabajando");
+        Assert.Equal(["hola"], await m.En(() => m.Gestor.Ocupadas()));
+
+        await m.En(() => m.Gestor.Interrumpir(id));
+        await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Esperando), "turno terminado");
+        Assert.Empty(await m.En(() => m.Gestor.Ocupadas()));
     }
 
     [Fact]

@@ -27,6 +27,9 @@ public partial class VentanaPrincipal : Form
     private CoreWebView2Environment? _entorno;
     private bool _cerrando;
     private int _cerrada;
+    private bool _interfazLista;
+    private bool _preguntandoSalir;
+    private bool _salirSinPreguntar;
 
     /// <summary>La base abierta (para copiarla al llevar MultiAgente a otro PC).</summary>
     internal BaseDatos Bd => _bd;
@@ -116,6 +119,7 @@ public partial class VentanaPrincipal : Form
     /// <summary>La interfaz ya ha pintado su primer estado.</summary>
     internal async void InterfazLista()
     {
+        _interfazLista = true;
         if (_captura is null) return;
         try
         {
@@ -149,6 +153,7 @@ public partial class VentanaPrincipal : Form
         BeginInvoke(() =>
         {
             Registro.Info("Otra copia de esta carpeta pide cerrar MultiAgente");
+            _salirSinPreguntar = true; // --cerrar lo usan los scripts: no hay nadie para contestar
             Close();
         });
     }
@@ -184,6 +189,18 @@ public partial class VentanaPrincipal : Form
     private void VentanaPrincipal_FormClosing(object? sender, FormClosingEventArgs e)
     {
         if (_cerrando) return; // segunda vuelta: el navegador ya ha soltado datos\webview
+        // Con sesiones trabajando se pregunta antes (en la interfaz, con su diálogo y su idioma). Solo cuando cierra el
+        // usuario: al apagar Windows no se espera. Si vuelve a pulsar la cruz mientras se pregunta, se cierra sin más.
+        if (e.CloseReason == CloseReason.UserClosing && _interfazLista && !_salirSinPreguntar && !_preguntandoSalir &&
+            _servicio?.Ocupadas() is { Count: > 0 } ocupadas)
+        {
+            e.Cancel = true;
+            _preguntandoSalir = true;
+            if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+            Activate();
+            Enviar(new { tipo = "confirmarSalir", sesiones = ocupadas });
+            return;
+        }
         if (!_fuera)
         {
             var r = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
@@ -196,6 +213,16 @@ public partial class VentanaPrincipal : Form
         _cerrando = true;
         Hide();
         _ = CerrarTodo();
+    }
+
+    /// <summary>Respuesta a «¿salir con sesiones trabajando?».</summary>
+    internal void Salir(bool si)
+    {
+        _preguntandoSalir = false;
+        if (!si) return;
+        Registro.Info("Se sale con sesiones trabajando (confirmado por el usuario)");
+        _salirSinPreguntar = true;
+        Close();
     }
 
     private async Task CerrarTodo()

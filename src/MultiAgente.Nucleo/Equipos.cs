@@ -45,6 +45,19 @@ public sealed record EstadoCuenta
     public DateTime Momento { get; init; } = DateTime.Now;
 
     public bool Enfriando(DateTime ahora) => EnfriandoHasta is { } h && h > ahora;
+
+    /// <summary>
+    /// Lo que vale ahora: si ya pasó el reinicio de un bloque, su porcentaje es de antes y el bloque ha vuelto a cero
+    /// (el consumo se lee cada pocos minutos y la consulta puede fallar: sin esto, una cuenta al 97 % seguiría «sin
+    /// margen» después de su reinicio).
+    /// </summary>
+    public EstadoCuenta AHora(DateTime ahora) => this with
+    {
+        Pct5h = Reinicio5h is { } r5 && r5 <= ahora ? 0 : Pct5h,
+        Reinicio5h = Reinicio5h is { } r5b && r5b <= ahora ? null : Reinicio5h,
+        PctSemana = ReinicioSemana is { } rs && rs <= ahora ? 0 : PctSemana,
+        ReinicioSemana = ReinicioSemana is { } rsb && rsb <= ahora ? null : ReinicioSemana,
+    };
     /// <summary>El mayor de los consumos conocidos (lo que de verdad limita).</summary>
     public double? Peor => (Pct5h, PctSemana) switch
     {

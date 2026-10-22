@@ -134,3 +134,15 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
   de SQLite); sin credenciales (inicio de sesión de cada CLI, `sessions\*.key` de Claude Code, bóveda), sin caché del
   navegador, registros ni uniones NTFS (se rehacen al arrancar). Con los datos reales de este PC: 533 MB, 0 credenciales.
   Pruebas: 154. `tools\ui-prueba.html` simula las tres cosas.
+- 22/10 Peticiones del usuario probando la app:
+  (1) Archivadas: mandarlas a otro proyecto las restaura ahí (antes seguían archivadas); «Restaurar» y «Restaurar en».
+  (2) Salir con sesiones trabajando o pidiendo permiso pregunta antes (diálogo propio; no con `--cerrar` ni al apagar
+  Windows; una segunda cruz cierra sin más). `Gestor.Ocupadas()`.
+  (3) Acciones del agente seguidas (herramientas y razonamiento) en un bloque plegado «N acciones · la última».
+  (4) Límites revisados: un porcentaje leído antes del reinicio de su bloque cuenta como 0 (`EstadoCuenta.AHora`; la
+  consulta de uso falla a menudo); el coste no se suma otra vez al recuperar una sesión (Claude Code vuelve a dar el total:
+  `coste:<nativa>` en ajustes); los tokens de la respuesta ACP son del turno, no acumulados; hora Unix de
+  «usage limit reached|…»; el lateral enseña el consumo que más aprieta; textos de consumo traducidos.
+  (5) Compactación visible: claude-agent-acp la manda como herramienta «compact» (con `rawOutput` de tokens) a los clientes
+  sin avisos de compactación; se guarda como entrada «compactacion» y se pinta como hito.
+  (6) «Copiar» en cada bloque de código y en cada respuesta entera (Markdown). Pruebas: 159.

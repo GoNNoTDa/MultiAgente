@@ -112,11 +112,47 @@ function md(texto) {
   const html = window.marked ? marked.parse(texto || '') : (texto || '');
   d.innerHTML = window.DOMPurify ? DOMPurify.sanitize(html) : '';
   d.querySelectorAll('pre code').forEach((c) => { try { if (window.hljs) hljs.highlightElement(c); } catch { /* lenguaje raro */ } });
+  // «Copiar» en cada bloque de código (fuera del <pre>, que se desplaza en horizontal)
+  d.querySelectorAll('pre').forEach((pre) => {
+    const caja = el('div', 'codigo');
+    pre.replaceWith(caja);
+    caja.append(pre, botonCopiar(() => pre.innerText.replace(/\n$/, ''), trad('Copiar el código'), 'copiar-codigo'));
+  });
   d.querySelectorAll('a[href]').forEach((a) => a.addEventListener('click', (e) => {
     e.preventDefault();
     enviar({ tipo: 'abrirEnlace', url: a.href });
   }));
   return d;
+}
+
+// Botón «Copiar»: copia lo que dé obtenerTexto() y lo confirma un momento con «Copiado»
+function botonCopiar(obtenerTexto, titulo, clase) {
+  const b = el('button', 'copiar ' + clase);
+  b.type = 'button';
+  const pintar = (hecho) => {
+    b.replaceChildren(icono(hecho ? 'hecho' : 'copiar'), el('span', '', hecho ? trad('Copiado') : trad('Copiar')));
+    b.classList.toggle('hecho', hecho);
+  };
+  pintar(false);
+  b.title = titulo;
+  b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    const texto = obtenerTexto();
+    try { await navigator.clipboard.writeText(texto); }
+    catch {
+      // Sin permiso para el portapapeles: el método clásico, con una caja de texto pasajera
+      const t = el('textarea');
+      t.value = texto;
+      document.body.append(t);
+      t.select();
+      document.execCommand('copy');
+      t.remove();
+    }
+    pintar(true);
+    clearTimeout(b.tiempo);
+    b.tiempo = setTimeout(() => pintar(false), 1600);
+  });
+  return b;
 }
 
 // ------------------------------------------------------------------ textos
@@ -172,14 +208,19 @@ function dinero(v, moneda) {
   return v.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (moneda === 'EUR' ? '€' : moneda && moneda !== 'USD' ? moneda : '$');
 }
 
+// El consumo que más cerca está de su límite (en el lateral solo cabe uno)
+function consumoQueAprieta(u) {
+  return (u.pctSemana || 0) > (u.pct5h || 0) ? trad('semana {0} %', Math.round(u.pctSemana)) : trad('5 h {0} %', Math.round(u.pct5h || 0));
+}
+
 function textoUso(c) {
   const u = c.consumo;
   if (u && u.enfriandoHasta) return { texto: trad('Ha llegado a su límite · vuelve a las {0}', hora(u.enfriandoHasta)), agotada: true };
   const partes = [];
   if (c.limites && c.limites.presupuesto) partes.push(trad('mes {0} de {1}', dinero(c.gastoMes || 0, c.moneda), dinero(c.limites.presupuesto, c.moneda)));
-  else if (c.gastoMes) partes.push(`mes ${dinero(c.gastoMes, c.moneda)}`);
-  if (u && u.pct5h != null) partes.push(`5 h ${Math.round(u.pct5h)} %`);
-  if (u && u.pctSemana != null) partes.push(`semana ${Math.round(u.pctSemana)} %`);
+  else if (c.gastoMes) partes.push(trad('mes {0}', dinero(c.gastoMes, c.moneda)));
+  if (u && u.pct5h != null) partes.push(trad('5 h {0} %', Math.round(u.pct5h)));
+  if (u && u.pctSemana != null) partes.push(trad('semana {0} %', Math.round(u.pctSemana)));
   if (c.sinMargen && c.autorizada && c.listo) return { texto: partes.join(' · ') + (partes.length ? ' · ' : '') + trad('sin margen'), agotada: true };
   return { texto: partes.join(' · '), agotada: false };
 }
@@ -412,7 +453,7 @@ function pintarArbol() {
       : c.problema ? el('span', 'e falta', trad('no funciona'))
       : c.consumo && c.consumo.enfriandoHasta ? el('span', 'e falta', trad('agotada · ') + hora(c.consumo.enfriandoHasta))
       : c.sinMargen ? el('span', 'e falta', trad('al límite'))
-      : c.consumo && c.consumo.pct5h != null ? el('span', 'e', `5 h ${Math.round(c.consumo.pct5h)} %`)
+      : c.consumo && (c.consumo.pct5h != null || c.consumo.pctSemana != null) ? el('span', 'e', consumoQueAprieta(c.consumo))
       : el('span', 'e', trad('lista'));
     f.append(el('span', 'punto ' + claseProveedor(c)), el('span', 'a', c.alias), e);
     f.title = traducir(c.problema) || c.catalogoNombre || c.proveedor;
@@ -686,9 +727,12 @@ function pintarConversacion() {
   cont.replaceChildren();
   const s = S.actual && S.sesiones[S.actual];
   if (s) for (const id of s.orden) cont.append(nodoEntrada(s.entradas.get(id)));
+  agruparAcciones(cont);
   pintarTrabajando();
   const destino = S.irA && cont.querySelector(`[data-id="${CSS.escape(S.irA)}"]`);
   if (destino) {
+    const grupo = destino.closest('details.acciones');
+    if (grupo) grupo.open = true;
     // Viene de la búsqueda: se enseña el mensaje encontrado en vez del final
     S.irA = null;
     pegado = false;
@@ -737,8 +781,51 @@ function actualizarEntrada(sesionId, e) {
       }
     }
     pendientes = new Set();
+    agruparAcciones(cont);
     bajar();
   });
+}
+
+// Lo que hace el agente entre mensajes (herramientas y razonamiento) va junto en un bloque plegado: se ve cuántas
+// acciones lleva y la última; al abrirlo, cada una se abre por separado como antes.
+function agruparAcciones(cont) {
+  const hijos = [...cont.children];
+  let tramo = [];
+  const cerrarTramo = () => {
+    const acciones = tramo.flatMap((n) => n.matches('details.acciones') ? [...n.querySelector('.lista-acc').children] : [n]);
+    if (acciones.length >= 2) {
+      let grupo = tramo.find((n) => n.matches('details.acciones'));
+      if (!grupo) {
+        grupo = el('details', 'acciones');
+        grupo.append(el('summary'), el('div', 'lista-acc'));
+        tramo[0].before(grupo);
+      }
+      grupo.querySelector('.lista-acc').append(...acciones); // ya dentro: append solo las deja en su orden
+      for (const n of tramo) if (n !== grupo && n.isConnected && n.matches('details.acciones')) n.remove();
+      resumenAcciones(grupo, acciones);
+    }
+    tramo = [];
+  };
+  for (const n of hijos) {
+    if (n.matches('.accion, details.acciones')) tramo.push(n);
+    else cerrarTramo();
+  }
+  cerrarTramo();
+}
+
+function resumenAcciones(grupo, acciones) {
+  const s = grupo.querySelector('summary');
+  const ultima = acciones[acciones.length - 1];
+  const fallos = acciones.filter((n) => n.querySelector(':scope > summary .st.failed')).length;
+  const enCurso = acciones.some((n) => n.querySelector(':scope > summary .st.in_progress, :scope > summary .st.pending'));
+  const ic = el('span', 'ic');
+  ic.append(icono('herramienta'));
+  const partes = [trad('{0} acciones', acciones.length)];
+  if (fallos) partes.push(trad('{0} con error', fallos));
+  s.replaceChildren(ic, el('span', 'n', partes.join(' · ')),
+                    el('span', 'tt', (ultima.querySelector(':scope > summary .tt') || ultima.querySelector(':scope > summary'))?.textContent || ''));
+  grupo.classList.toggle('en-curso', enCurso);
+  grupo.classList.toggle('con-error', fallos > 0);
 }
 
 function pintarTrabajando() {
@@ -846,16 +933,21 @@ function nodoEntrada(e) {
       if (e.texto) n.append(el('div', 'burbuja', e.texto));
       break;
     }
-    case 'agente':
+    case 'agente': {
       n = md(e.texto);
+      // La respuesta entera, tal como la escribió el agente (Markdown: al pegarla conserva listas, negritas y código)
+      const pie = el('div', 'pie-respuesta');
+      pie.append(botonCopiar(() => e.texto || '', trad('Copiar la respuesta'), 'copiar-respuesta'));
+      n.append(pie);
       break;
+    }
     case 'pensamiento': {
-      n = el('details', 'pens');
+      n = el('details', 'pens accion');
       n.append(el('summary', '', trad('Razonamiento')), el('div', '', e.texto));
       break;
     }
     case 'herramienta': {
-      n = el('details', 'herr');
+      n = el('details', 'herr accion');
       const s = el('summary');
       const ic = el('span', 'ic');
       ic.append(icono(ICONOS[e.clase] || 'herramienta'));
@@ -882,6 +974,23 @@ function nodoEntrada(e) {
     case 'aviso':
       n = el('div', 'aviso ' + (e.nivel || ''), legible(e.texto));
       break;
+    case 'compactacion': {
+      // Hito de la conversación: el agente ha resumido lo anterior para hacer sitio en el contexto
+      const d = e.datos || {};
+      const enCurso = e.estado === 'in_progress' || e.estado === 'pending';
+      const partes = [enCurso ? trad('Compactando la conversación…')
+        : e.estado === 'failed' ? trad('No se pudo compactar la conversación')
+        : d.trigger === 'manual' ? trad('Conversación compactada') : trad('Conversación compactada automáticamente')];
+      if (!enCurso && d.preTokens) partes.push(trad('{0} → {1} tokens', numero(d.preTokens), numero(d.postTokens)));
+      if (!enCurso && d.durationMs) partes.push(trad('{0} s', Math.round(d.durationMs / 1000)));
+      n = el('div', 'relevo-linea compacta' + (e.estado === 'failed' ? ' error' : '') + (enCurso ? ' en-curso' : ''));
+      const t = el('span');
+      t.append(icono('recargar'), document.createTextNode(' ' + partes.join(' · ')));
+      const error = (e.contenido || []).map((x) => x && x.content && x.content.text).find(Boolean);
+      t.title = error || trad('El agente resume lo anterior para hacer sitio en el contexto; la conversación que ves aquí no cambia.');
+      n.append(t);
+      break;
+    }
     case 'relevo': {
       n = el('div', 'relevo-linea');
       const t = el('span');
@@ -1631,6 +1740,16 @@ function alRecibir(m) {
     case 'resultados':
       if (m.peticion === peticionBusqueda) pintarResultados(m);
       break;
+    case 'confirmarSalir': {
+      const n = m.sesiones.length;
+      const nombres = m.sesiones.slice(0, 3).map((t) => '«' + (t === 'Sesión nueva' ? trad('Sesión nueva') : t) + '»').join(', ') + (n > 3 ? '…' : '');
+      preguntar({
+        titulo: n === 1 ? trad('Hay una sesión trabajando') : trad('Hay {0} sesiones trabajando', n),
+        texto: trad('Si sales ahora, se corta lo que está haciendo el agente en {0}. La conversación y lo que ya ha hecho se conservan.', nombres),
+        aceptar: trad('Salir igualmente'), peligro: true,
+      }).then((si) => enviar({ tipo: 'salir', si: !!si }));
+      break;
+    }
     case 'proyectoArchivado': {
       const p = S.estado.proyectos.find((x) => x.id === m.proyectoId);
       const nombre = p ? p.nombre : '';

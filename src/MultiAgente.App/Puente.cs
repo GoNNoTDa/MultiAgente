@@ -63,6 +63,9 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             case "abrirRuta":
                 AbrirRuta(Texto(m, "ruta"));
                 break;
+            case "salir":
+                ventana.Salir(m.TryGetProperty("si", out var si) && si.ValueKind == JsonValueKind.True);
+                break;
             case "abrirEnlace":
                 if (Uri.TryCreate(Texto(m, "url"), UriKind.Absolute, out var u) && u.Scheme is "https" or "http")
                     Process.Start(new ProcessStartInfo(u.AbsoluteUri) { UseShellExecute = true });

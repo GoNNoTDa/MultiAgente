@@ -21,7 +21,7 @@ public static class Enrutador
     public static string? SinMargen(Candidata c, DateTime ahora)
     {
         if (!c.Lista) return "no está autorizada o falta su agente";
-        var e = c.Estado;
+        var e = c.Estado?.AHora(ahora);
         if (e is null) return null;
         if (e.Enfriando(ahora)) return $"ha llegado a su límite (hasta las {e.EnfriandoHasta:HH:mm})";
         if (e.Pct5h >= (c.Cuenta.Umbral5h ?? Umbral5h)) return $"está al {e.Pct5h:0} % del bloque de 5 horas";
@@ -119,6 +119,13 @@ public static class Enrutador
             var min = m.Groups[2].Success ? int.Parse(m.Groups[2].Value) : 0;
             var hora = ahora.Date.AddHours(h).AddMinutes(min);
             return hora > ahora ? hora : hora.AddDays(1);
+        }
+        // Claude Code: «Claude AI usage limit reached|1760972400» (hora de reinicio en segundos Unix)
+        m = System.Text.RegularExpressions.Regex.Match(t, @"\|\s*(\d{10})\b");
+        if (m.Success)
+        {
+            var reinicio = DateTimeOffset.FromUnixTimeSeconds(long.Parse(m.Groups[1].Value)).LocalDateTime;
+            if (reinicio > ahora) return reinicio;
         }
         var conocido = new[] { estado?.Reinicio5h, estado?.ReinicioSemana }.Where(x => x > ahora).Min();
         return conocido ?? ahora.AddHours(1);

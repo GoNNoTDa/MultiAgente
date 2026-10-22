@@ -22,6 +22,7 @@ public sealed partial class Gestor
     private void AnotarUso(SesionAgente a, UsoTurno uso)
     {
         _repo.GuardarUso(uso);
+        GuardarCosteContado(a);
         if (uso.Coste is not { } coste || coste <= 0) return;
         if (uso.Moneda is not null) _monedas[a.Cuenta.Id] = uso.Moneda;
         var previo = _estados.GetValueOrDefault(a.Cuenta.Id) ?? new EstadoCuenta();

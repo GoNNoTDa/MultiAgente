@@ -250,6 +250,19 @@ public class AgenteTests
     }
 
     [Fact]
+    public async Task La_compactacion_queda_como_hito_con_sus_tokens()
+    {
+        await using var m = await Arrancado("agente");
+        m.Agente.Enviar("compacta y sigue");
+        await EsperarTurno(m.Agente, 3);
+        var c = Assert.Single(m.Agente.Hilo.Entradas, e => e.Tipo == "compactacion");
+        Assert.Equal("completed", c.Estado);
+        Assert.Equal((182000, 31000, "automatic"),
+                     (c.Datos!["preTokens"]!.GetValue<int>(), c.Datos["postTokens"]!.GetValue<int>(), c.Datos["trigger"]!.GetValue<string>()));
+        Assert.DoesNotContain(m.Agente.Hilo.Entradas, e => e.Tipo == "herramienta");
+    }
+
+    [Fact]
     public async Task El_limite_de_uso_queda_como_aviso_de_limite()
     {
         await using var m = await Arrancado("agente");

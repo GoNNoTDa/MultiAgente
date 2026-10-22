@@ -88,8 +88,8 @@ public sealed class SesionAgente : IAsyncDisposable
     /// <summary>Tokens en el contexto y tamaño de la ventana (si el agente lo informa).</summary>
     public (long Usado, long Tamano)? Contexto { get; private set; }
 
-    // Acumulados que da el agente (de su sesión nativa): el uso de cada turno es la diferencia
-    private long _accEntrada, _accSalida, _accTotal;
+    // Coste acumulado que da el agente (de su sesión nativa): el de cada turno es la diferencia. Los tokens llegan ya
+    // por turno (esquema ACP: «Token usage for this turn»).
     private double? _accCoste;
     private string? _moneda;
     private long _turnoEntrada, _turnoSalida, _turnoTotal;
@@ -97,6 +97,15 @@ public sealed class SesionAgente : IAsyncDisposable
 
     /// <summary>De qué cuenta viene la conversación si este agente la recibe por traspaso (relevo a otro proveedor).</summary>
     public string? TraspasoDe { get; set; }
+
+    /// <summary>
+    /// Coste acumulado de la sesión nativa que ya se contó antes (en otro arranque o con otra cuenta). Al recuperarla,
+    /// Claude Code vuelve a informar el total desde el principio: sin esto, se sumaría otra vez.
+    /// </summary>
+    public double? CosteYaContado { get; init; }
+
+    /// <summary>Último coste acumulado que ha informado el agente (para guardarlo como <see cref="CosteYaContado"/>).</summary>
+    public double? CosteAcumulado { get { lock (_cerrojo) return _accCoste; } }
 
     /// <summary>Arranca el agente y deja la sesión lista. Lanza <see cref="ExcepcionUsuario"/> con un mensaje llano.</summary>
     public async Task Arrancar(CancellationToken ct = default)
@@ -143,6 +152,7 @@ public sealed class SesionAgente : IAsyncDisposable
                     _cargando = true;
                     var r = await _conexion.Pedir("session/load", ParametrosSesion(SesionNativa), limite.Token);
                     LeerSesion(r);
+                    lock (_cerrojo) _accCoste = CosteYaContado;
                 }
                 catch (ErrorAcp ex) when (_conexion.Viva)
                 {
@@ -182,6 +192,7 @@ public sealed class SesionAgente : IAsyncDisposable
         }
 
         UltimoError = null;
+        TomarUsoDelTurno(); // lo que haya informado al recuperar la sesión no es de ningún turno
         PonerEstado(EstadoSesion.Esperando);
         await AplicarPreferencias();
         Lanzar();
@@ -530,19 +541,18 @@ public sealed class SesionAgente : IAsyncDisposable
         }
     }
 
-    /// <summary>usage de la respuesta del turno: tokens acumulados de la sesión del agente.</summary>
+    /// <summary>usage de la respuesta del turno: los tokens de este turno.</summary>
     private void AcumularTokens(JsonObject u)
     {
         lock (_cerrojo)
         {
-            long D(long nuevo, ref long acc) { var d = nuevo >= acc ? nuevo - acc : nuevo; acc = nuevo; return d; }
             var entrada = Numero(u["inputTokens"]) + Numero(u["cachedReadTokens"]) + Numero(u["cachedWriteTokens"]);
             var salida = Numero(u["outputTokens"]) + Numero(u["thoughtTokens"]);
             var total = Numero(u["totalTokens"]);
             if (total == 0) total = entrada + salida;
-            _turnoEntrada += D(entrada, ref _accEntrada);
-            _turnoSalida += D(salida, ref _accSalida);
-            _turnoTotal += D(total, ref _accTotal);
+            _turnoEntrada += entrada;
+            _turnoSalida += salida;
+            _turnoTotal += total;
         }
     }
 
@@ -633,17 +643,22 @@ public sealed class SesionAgente : IAsyncDisposable
     {
         if (id is null) return;
         if (ArranqueMcp(u)) return;
+        // Claude Code compacta la conversación (llena el contexto): llega como herramienta «compact» con los tokens de antes
+        // y de después; se guarda aparte para enseñarlo como un hito de la conversación, no como una acción más
+        var compacta = u["_meta"]?["claudeCode"]?["toolName"]?.GetValue<string>() == "compact";
         Entrada e;
         lock (_cerrojo)
         {
-            var existente = _turno.FirstOrDefault(x => x.Tipo == "herramienta" && x.Id == id);
+            var existente = _turno.FirstOrDefault(x => x.Tipo is "herramienta" or "compactacion" && x.Id == id);
             if (existente is null)
             {
-                existente = Hilo.Entradas.FirstOrDefault(x => x.Tipo == "herramienta" && x.Id == id)
+                existente = Hilo.Entradas.FirstOrDefault(x => x.Tipo is "herramienta" or "compactacion" && x.Id == id)
                             ?? new Entrada { Id = id, Tipo = "herramienta", Estado = "pending", Cuenta = Cuenta.Alias };
                 _turno.Add(existente);
             }
             e = existente;
+            if (compacta) e.Tipo = "compactacion";
+            if (compacta && u["rawOutput"] is JsonObject datos) e.Datos = datos.DeepClone();
             if (u["title"]?.GetValue<string>() is { } t) e.Titulo = t;
             if (u["kind"]?.GetValue<string>() is { } k) e.Clase = k;
             if (u["status"]?.GetValue<string>() is { } s) e.Estado = s;

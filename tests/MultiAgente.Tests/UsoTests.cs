@@ -65,9 +65,37 @@ public class UsoAgenteTests
             Assert.True(DateTime.UtcNow < limite, "no llegó el uso de los dos turnos");
             await Task.Delay(50);
         }
-        // El agente da acumulados (110, 220 tokens; 0,25, 0,50 $): cada turno se queda con su parte
-        Assert.All(usos, u => Assert.Equal((100L, 10L, 110L, 0.25, "USD"), (u.Entrada, u.Salida, u.Total, u.Coste!.Value, u.Moneda)));
+        // Tokens del turno tal cual (110 y 220); coste acumulado (0,25 y 0,50 $): cada turno se queda con su parte
+        Assert.Equal((100L, 10L, 110L, 0.25, "USD"), (usos[0].Entrada, usos[0].Salida, usos[0].Total, usos[0].Coste!.Value, usos[0].Moneda));
+        Assert.Equal((200L, 20L, 220L, 0.25), (usos[1].Entrada, usos[1].Salida, usos[1].Total, usos[1].Coste!.Value));
         Assert.Equal((2000L, 200000L), a.Contexto);
+    }
+
+    [Fact]
+    public async Task Al_recuperar_la_sesion_no_vuelve_a_contar_el_coste_de_antes()
+    {
+        using var c = new CarpetaPrueba("uso");
+        var trabajo = Directory.CreateDirectory(Path.Combine(c.Ruta, "p")).FullName;
+        var cuenta = new Cuenta { Alias = "A", Proveedor = "Claude", Tipo = TipoCuenta.Api, Carpeta = Path.Combine(c.Ruta, "cuenta") };
+        var entorno = Proveedores.Entorno(Proveedores.Claude, cuenta.Carpeta, "k");
+        entorno["FALSO_REGISTRO"] = Path.Combine(c.Ruta, "falso.log");
+        async Task<(UsoTurno Uso, string Nativa, double? Acumulado)> UnTurno(string? nativa, double? yaContado)
+        {
+            await using var a = new SesionAgente(new Sesion { Carpeta = trabajo }, cuenta, Proveedores.Claude,
+                new OrdenAgente("dotnet", [AgenteFalso.Dll()]), entorno, new Hilo(Path.Combine(c.Ruta, "s")), nativa) { CosteYaContado = yaContado };
+            var llegado = new TaskCompletionSource<UsoTurno>(TaskCreationOptions.RunContinuationsAsynchronously);
+            a.UsoDelTurno += (_, u) => llegado.TrySetResult(u);
+            await a.Arrancar();
+            a.Enviar("hola");
+            var uso = await llegado.Task.WaitAsync(TimeSpan.FromSeconds(20));
+            return (uso, a.SesionNativa!, a.CosteAcumulado);
+        }
+
+        var (primero, nativa, acumulado) = await UnTurno(null, null);
+        Assert.Equal(0.25, primero.Coste);
+        // Otro arranque recupera la misma sesión: el agente informa 0,50 $ en total, de los que 0,25 ya se contaron
+        var (segundo, _, _) = await UnTurno(nativa, acumulado);
+        Assert.Equal(0.25, segundo.Coste);
     }
 }
 

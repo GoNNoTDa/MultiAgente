@@ -125,6 +125,29 @@ public class EnrutadorTests
         Assert.Equal(esLimite, SesionAgente.EsRespuestaDeLimite(respuesta));
 
     [Fact]
+    public void Lee_la_hora_de_reinicio_que_da_Claude_Code()
+    {
+        var reinicio = Ahora.AddMinutes(95);
+        var unix = new DateTimeOffset(reinicio).ToUnixTimeSeconds();
+        Assert.Equal(reinicio, Enrutador.HastaCuando($"Claude AI usage limit reached|{unix}", null, Ahora));
+    }
+
+    [Fact]
+    public void Un_porcentaje_de_antes_del_reinicio_ya_no_cuenta()
+    {
+        var c = new Cuenta { Id = "a", Alias = "a" };
+        // Leído al 97 % con el reinicio a las 12:30; la consulta siguiente falló y el dato se quedó
+        var viejo = new EstadoCuenta { Pct5h = 97, Reinicio5h = Ahora.AddMinutes(30), PctSemana = 40, ReinicioSemana = Ahora.AddDays(2) };
+        Assert.Contains("5 horas", Enrutador.SinMargen(new Candidata(c, true, viejo), Ahora));
+        Assert.Null(Enrutador.SinMargen(new Candidata(c, true, viejo), Ahora.AddMinutes(31)));
+        var despues = viejo.AHora(Ahora.AddMinutes(31));
+        Assert.Equal((0.0, (DateTime?)null, 40.0), (despues.Pct5h!.Value, despues.Reinicio5h, despues.PctSemana!.Value));
+
+        var semana = new EstadoCuenta { PctSemana = 99, ReinicioSemana = Ahora.AddHours(-1) };
+        Assert.Null(Enrutador.SinMargen(new Candidata(c, true, semana), Ahora));
+    }
+
+    [Fact]
     public void Sin_hora_en_el_mensaje_usa_la_del_consumo()
     {
         var estado = new EstadoCuenta { Reinicio5h = Ahora.AddMinutes(42), ReinicioSemana = Ahora.AddDays(3) };

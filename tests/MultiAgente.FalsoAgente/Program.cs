@@ -5,6 +5,8 @@
 //   «plan» → manda una lista de tareas; otro → «Recibido: …».
 // Variables: FALSO_SIN_AUTH=1 → session/new falla por autenticación; FALSO_CLAVE_ESPERADA → el método api-key exige
 // que OPENAI_API_KEY valga eso. Escribe en FALSO_REGISTRO (si se da) lo que recibe, para comprobarlo en las pruebas.
+// Uso como Claude Code: tokens de cada turno en la respuesta y coste acumulado de la sesión, que al recuperarla
+// (session/load) sigue desde lo que llevaba (se guarda en FALSO_REGISTRO.costes, si se da).
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -24,6 +26,22 @@ async Task Escribir(JsonObject m)
     await cerrojo.WaitAsync();
     try { await salida.WriteLineAsync(m.ToJsonString()); }
     finally { cerrojo.Release(); }
+}
+
+string? FicheroCostes() => registro is null ? null : registro + ".costes";
+
+double CosteGuardado(string sesion)
+{
+    var f = FicheroCostes();
+    if (f is null || !File.Exists(f)) return 0;
+    var linea = File.ReadAllLines(f).LastOrDefault(l => l.StartsWith(sesion + "="));
+    return linea is null ? 0 : double.Parse(linea[(sesion.Length + 1)..], System.Globalization.CultureInfo.InvariantCulture);
+}
+
+void GuardarCoste(string sesion, double coste)
+{
+    if (FicheroCostes() is { } f)
+        lock (esperando) File.AppendAllText(f, $"{sesion}={coste.ToString(System.Globalization.CultureInfo.InvariantCulture)}\n");
 }
 
 void Anotar(string linea)
@@ -123,6 +141,7 @@ async Task<JsonNode?> Atender(string metodo, JsonNode? p)
             var id = p?["sessionId"]?.GetValue<string>() ?? "";
             if (!id.StartsWith("falso-")) throw new FalloAcp(-32002, "Session not found");
             Anotar($"cargada {id}");
+            costeAcumulado[id] = CosteGuardado(id);
             await Texto(id, "user_message_chunk", "mensaje antiguo");
             await Texto(id, "agent_message_chunk", "respuesta antigua");
             return new JsonObject { ["modes"] = Modos(), ["models"] = Modelos() };
@@ -163,6 +182,22 @@ async Task<JsonNode?> Prompt(JsonNode p)
         throw new FalloAcp(-32000, "Usage limit reached for this account");
     }
     if (texto.Contains("muere")) Environment.Exit(3);
+    if (texto.Contains("compacta"))
+    {
+        // Como Claude Code con un cliente sin avisos de compactación: herramienta «compact» con los tokens en rawOutput
+        var meta = new JsonObject { ["claudeCode"] = new JsonObject { ["toolName"] = "compact" } };
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "tool_call", ["toolCallId"] = "compacta1", ["title"] = "Compact conversation", ["kind"] = "think",
+            ["status"] = "in_progress", ["_meta"] = meta.DeepClone(),
+        });
+        await Actualizar(sesion, new JsonObject
+        {
+            ["sessionUpdate"] = "tool_call_update", ["toolCallId"] = "compacta1", ["status"] = "completed", ["_meta"] = meta.DeepClone(),
+            ["rawOutput"] = new JsonObject { ["trigger"] = "automatic", ["preTokens"] = 182000, ["postTokens"] = 31000, ["durationMs"] = 42000 },
+        });
+        await Actualizar(sesion, new JsonObject { ["sessionUpdate"] = "usage_update", ["used"] = 31000, ["size"] = 200000 });
+    }
 
     // Lo que hace Codex con un proveedor que no es OpenAI: aviso de metadatos, arranque de MCP fallido, error HTTP como texto
     if (texto.Contains("ruido"))
@@ -240,6 +275,7 @@ async Task<JsonNode?> Prompt(JsonNode p)
     var turno = Interlocked.Increment(ref turnos);
     var coste = texto.Contains("caro") ? 5.0 : 0.25;
     costeAcumulado[sesion] = costeAcumulado.GetValueOrDefault(sesion) + coste;
+    GuardarCoste(sesion, costeAcumulado[sesion]);
     await Actualizar(sesion, new JsonObject
     {
         ["sessionUpdate"] = "usage_update", ["used"] = 1000 * turno, ["size"] = 200000,
@@ -254,6 +290,7 @@ async Task<JsonNode?> Prompt(JsonNode p)
     return new JsonObject
     {
         ["stopReason"] = "end_turn",
+        // Los de este turno (crecen con cada turno del proceso, como el contexto)
         ["usage"] = new JsonObject { ["inputTokens"] = 100 * turno, ["outputTokens"] = 10 * turno, ["totalTokens"] = 110 * turno },
     };
 }
