@@ -33,6 +33,8 @@ public sealed class SesionAgente : IAsyncDisposable
     private bool _procesando;
     private bool _cargando;
     private bool _traspasoPendiente;
+    // Tras un límite, la cola espera al relevo en vez de seguir mandando a la cuenta agotada
+    private volatile bool _pausada;
     private readonly HashSet<string> _mcpAvisados = [];
     private bool _admiteCarga;
     private bool _mcpHttp;
@@ -299,7 +301,24 @@ public sealed class SesionAgente : IAsyncDisposable
     public void Enviar(string texto, IReadOnlyList<Adjunto>? adjuntos = null)
     {
         _cola.Enqueue((texto, adjuntos ?? []));
+        _pausada = false; // el usuario escribe: decide él, aunque la cuenta esté agotada
         Cambiado?.Invoke(this);
+        Lanzar();
+    }
+
+    /// <summary>Saca los mensajes que esperaban en la cola (para pasarlos a la cuenta del relevo).</summary>
+    public List<(string Texto, IReadOnlyList<Adjunto> Adjuntos)> SacarCola()
+    {
+        var sacados = new List<(string, IReadOnlyList<Adjunto>)>();
+        while (_cola.TryDequeue(out var m)) sacados.Add(m);
+        if (sacados.Count > 0) Cambiado?.Invoke(this);
+        return sacados;
+    }
+
+    /// <summary>Sigue mandando la cola con esta cuenta (el usuario ha cancelado el relevo).</summary>
+    public void Reanudar()
+    {
+        _pausada = false;
         Lanzar();
     }
 
@@ -307,7 +326,7 @@ public sealed class SesionAgente : IAsyncDisposable
     {
         lock (_cerrojo)
         {
-            if (_procesando || _cola.IsEmpty || Estado is not (EstadoSesion.Esperando)) return;
+            if (_procesando || _pausada || _cola.IsEmpty || Estado is not (EstadoSesion.Esperando)) return;
             _procesando = true;
         }
         _ = Task.Run(Procesar);
@@ -349,6 +368,7 @@ public sealed class SesionAgente : IAsyncDisposable
                     limiteDelTurno ??= LimiteEnLaRespuesta();
                     if (limiteDelTurno is not null && !_turno.Any(e => e.Nivel == "limite"))
                         Avisar($"La cuenta «{Cuenta.Alias}» ha llegado a su límite de uso.", "limite");
+                    if (limiteDelTurno is not null) _pausada = true;
                     CerrarTurno();
                     if (Estado is EstadoSesion.Trabajando or EstadoSesion.PidePermiso) PonerEstado(EstadoSesion.Esperando);
                 }
@@ -360,6 +380,7 @@ public sealed class SesionAgente : IAsyncDisposable
                     TurnoTerminado?.Invoke(this);
                 }
                 catch (Exception ex) { Registro.Error("Al avisar del fin del turno", ex); }
+                if (_pausada) break;
                 limiteDelTurno = null;
             }
         }
@@ -703,18 +724,45 @@ public sealed class SesionAgente : IAsyncDisposable
     private string? LimiteEnLaRespuesta()
     {
         string? texto;
-        lock (_cerrojo) texto = _turno.LastOrDefault(e => e.Tipo == "agente")?.Texto;
-        if (texto is null || texto.Length > 400) return null;
-        return System.Text.RegularExpressions.Regex.IsMatch(texto,
-            @"usage limit|limit reached|hit your (usage )?limit|rate limit|quota (exceeded|exhausted)|resource.?exhausted|out of credits|insufficient (credit|balance)",
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase) ? texto : null;
+        bool conHerramientas;
+        lock (_cerrojo)
+        {
+            texto = _turno.LastOrDefault(e => e.Tipo == "agente")?.Texto;
+            conHerramientas = _turno.Any(e => e.Tipo == "herramienta");
+        }
+        // Un turno que ha trabajado con herramientas es una respuesta de verdad, aunque hable de límites
+        return texto is not null && !conHerramientas && EsRespuestaDeLimite(texto) ? texto : null;
     }
 
-    private static bool EsLimite(ErrorAcp ex)
+    // Frases con las que los agentes y los proveedores avisan del límite de uso (no «limit» ni «rate» sueltos)
+    private const string FrasesLimite =
+        @"\busage[ _-]?limit|\blimit (reached|exceeded)|\bhit your (usage )?limit|\brate[ _-]?limit(ed| reached| exceeded|_error)" +
+        @"|\bquota (exceeded|exhausted)|\bexceeded your (current )?quota|\bresource[ _-]?exhausted|\bout of credits" +
+        @"|\binsufficient (credit|balance)|\btoo many requests\b|\b429\b";
+
+    // Errores de tamaño del contexto: dicen «limit» pero no se arreglan cambiando de cuenta
+    private static readonly System.Text.RegularExpressions.Regex ErrorDeContexto = new(
+        @"context|prompt is too long|token limit|max_tokens", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex ErrorDeLimite = new(
+        FrasesLimite + @"|\brate[ _-]?limit\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    private static readonly System.Text.RegularExpressions.Regex RespuestaDeLimite = new(
+        FrasesLimite, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+    /// <summary>¿El error del agente es de límite de uso (y no de contexto ni otra cosa)?</summary>
+    internal static bool EsErrorDeLimite(string t) => ErrorDeLimite.IsMatch(t) && !ErrorDeContexto.IsMatch(t);
+
+    /// <summary>¿La respuesta corta del agente es su aviso de límite? (Solo cuenta si lo dice al principio.)</summary>
+    internal static bool EsRespuestaDeLimite(string t)
     {
-        var t = (ex.Message + " " + ex.Datos?.ToJsonString()).ToLowerInvariant();
-        return t.Contains("limit") || t.Contains("quota") || t.Contains("rate") || t.Contains("429") || t.Contains("exhausted");
+        t = t.Trim();
+        if (t.Length > 400 || ErrorDeContexto.IsMatch(t)) return false;
+        var m = RespuestaDeLimite.Match(t);
+        return m.Success && m.Index <= 40;
     }
+
+    private static bool EsLimite(ErrorAcp ex) => EsErrorDeLimite(ex.Message + " " + ex.Datos?.ToJsonString());
 
     private string MensajeLlano(ErrorAcp ex)
     {

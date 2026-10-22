@@ -612,5 +612,6 @@ window.TEXTOS_en = {
  "Ninguno.": "None.",
  "Abrir la sesión": "Open the session",
  " Las sesiones de esta cuenta siguen con él.": " This account's sessions continue with it.",
- "Idioma de la aplicación": "App language"
+ "Idioma de la aplicación": "App language",
+ "Por seguridad, MultiAgente no abre rutas de red. Ábrela tú desde el Explorador si te fías de ella.": "For safety, MultiAgente doesn't open network paths. Open it yourself from File Explorer if you trust it."
 };

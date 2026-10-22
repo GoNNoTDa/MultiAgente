@@ -46,6 +46,8 @@ public sealed partial class Gestor : IAsyncDisposable
     private readonly Dictionary<string, EstadoCuenta> _estados = [];
     private readonly Dictionary<string, DateTime> _consultado = [];
     private readonly Dictionary<string, RelevoPendiente> _relevos = [];
+    /// <summary>Mensajes que esperan a que arranque la cuenta del relevo («Continúa…» y la cola de la cuenta agotada).</summary>
+    private readonly Dictionary<string, List<(string Texto, IReadOnlyList<Adjunto> Adjuntos)>> _aMandar = [];
     private readonly HashSet<string> _resumiendo = [];
     private readonly Dictionary<string, string> _monedas = [];
     private readonly Dictionary<string, DateTime> _esperandoLogin = [];
@@ -629,6 +631,7 @@ public sealed partial class Gestor : IAsyncDisposable
         if (!_relevos.Remove(sesionId)) return;
         Registro.Info($"Sesión {sesionId}: relevo cancelado por el usuario");
         _enviar(new { tipo = "relevo", sesionId, relevo = (object?)null });
+        _vivas.GetValueOrDefault(sesionId)?.Reanudar(); // lo que había en cola sigue con esta cuenta
     }
 
     public Task RelevoYa(string sesionId)
@@ -672,7 +675,16 @@ public sealed partial class Gestor : IAsyncDisposable
     public async Task Relevar(string sesionId, Cuenta destino, string motivo, bool continuar)
     {
         var s = _repo.Sesion(sesionId) ?? throw new ExcepcionUsuario("Esa sesión ya no existe.");
-        if (_vivas.Remove(sesionId, out var viva)) await viva.DisposeAsync();
+        // Lo que tiene que recibir la cuenta nueva, en orden; si no arranca, espera al siguiente intento
+        var aMandar = _aMandar.GetValueOrDefault(sesionId) ?? [];
+        const string continua = "Continúa donde lo dejaste.";
+        if (continuar && !aMandar.Any(m => m.Texto == continua)) aMandar.Insert(0, (continua, []));
+        if (_vivas.Remove(sesionId, out var viva))
+        {
+            aMandar.AddRange(viva.SacarCola());
+            await viva.DisposeAsync();
+        }
+        if (aMandar.Count > 0) _aMandar[sesionId] = aMandar;
         var origen = s.CuentaId is null ? null : _repo.Cuentas().FirstOrDefault(c => c.Id == s.CuentaId);
         var hilo = new Hilo(Path.Combine(_rutas.Sesiones, s.Id));
         var marca = new Entrada
@@ -687,7 +699,6 @@ public sealed partial class Gestor : IAsyncDisposable
         Registro.Info($"Sesión {sesionId}: relevo de {origen?.Alias} a {destino.Alias} ({motivo})");
         EnviarEstado();
         await AbrirSesion(sesionId);
-        if (continuar && _vivas.TryGetValue(sesionId, out var nueva)) nueva.Enviar("Continúa donde lo dejaste.");
     }
 
     // ================================================================= sesiones
@@ -749,15 +760,23 @@ public sealed partial class Gestor : IAsyncDisposable
         var hilo = new Hilo(Path.Combine(_rutas.Sesiones, s.Id));
         if (_vivas.TryGetValue(id, out var viva))
         {
-            _enviar(new { tipo = "conversacion", sesionId = id, entradas = viva.Hilo.Entradas, agente = Agente(viva) });
-            if (_relevos.TryGetValue(id, out var r)) EnviarRelevo(r);
-            return;
+            if (viva.Estado != EstadoSesion.Error)
+            {
+                _enviar(new { tipo = "conversacion", sesionId = id, entradas = viva.Hilo.Entradas, agente = Agente(viva) });
+                if (_relevos.TryGetValue(id, out var r)) EnviarRelevo(r);
+                return;
+            }
+            // El agente se cayó o no llegó a arrancar (p. ej., faltaba autorizar la cuenta): se vuelve a arrancar
+            _vivas.Remove(id);
+            await viva.DisposeAsync();
         }
         _enviar(new { tipo = "conversacion", sesionId = id, entradas = hilo.Entradas, agente = (object?)null });
 
         var cuenta = s.CuentaId is null ? null : _repo.Cuentas().FirstOrDefault(c => c.Id == s.CuentaId);
         if (cuenta is null) throw new ExcepcionUsuario("La cuenta de esta sesión ya no existe. Elige otra en el chip de la cuenta.");
         await Arrancar(s, cuenta, hilo);
+        if (_aMandar.Remove(id, out var aMandar) && _vivas.TryGetValue(id, out var nueva))
+            foreach (var (texto, adjuntos) in aMandar) nueva.Enviar(texto, adjuntos);
     }
 
     private async Task Arrancar(Sesion s, Cuenta cuenta, Hilo hilo)
@@ -888,7 +907,11 @@ public sealed partial class Gestor : IAsyncDisposable
                 a = _vivas.GetValueOrDefault(sesionId) ?? throw new ExcepcionUsuario("No se pudo seguir con otra cuenta.");
             }
         }
-        if (a.Estado == EstadoSesion.Error) throw new ExcepcionUsuario(a.UltimoError ?? "El agente no está disponible.");
+        if (a.Estado == EstadoSesion.Error)
+        {
+            await AbrirSesion(sesionId); // lo vuelve a arrancar; si no puede, avisa con el motivo
+            a = _vivas.GetValueOrDefault(sesionId) ?? throw new ExcepcionUsuario("El agente no está disponible.");
+        }
         a.Sesion.UltimoUso = DateTime.Now;
         a.Sesion.Titulo ??= Titulo(texto);
         _repo.GuardarSesion(a.Sesion);
@@ -954,6 +977,7 @@ public sealed partial class Gestor : IAsyncDisposable
     public async Task Archivar(string sesionId)
     {
         _relevos.Remove(sesionId);
+        _aMandar.Remove(sesionId);
         if (_vivas.Remove(sesionId, out var viva)) await viva.DisposeAsync();
         var s = _repo.Sesion(sesionId);
         if (s is null) return;

@@ -15,12 +15,6 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
 
     private bool _primeraVez = true;
 
-    private static readonly HashSet<string> Ejecutables = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".exe", ".bat", ".cmd", ".com", ".ps1", ".psm1", ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".msi", ".msp",
-        ".lnk", ".scr", ".pif", ".reg", ".hta", ".cpl", ".jar", ".appref-ms",
-    };
-
     public async void Recibir(string json, IReadOnlyList<string> soltados)
     {
         string? tipo = null;
@@ -357,16 +351,18 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
         catch (IOException) { return null; }
     }
 
-    /// <summary>Abre una ruta de la conversación: carpetas y documentos se abren; los ejecutables solo se señalan en su carpeta.</summary>
+    /// <summary>Abre una ruta de la conversación: carpetas y documentos se abren; lo demás solo se señala en su carpeta.</summary>
     private static void AbrirRuta(string? ruta)
     {
         if (string.IsNullOrWhiteSpace(ruta)) return;
+        // Antes de mirar el disco: con una ruta de red, solo comprobar si existe ya conectaría con ese servidor
+        if (AperturaSegura.EsDeRed(ruta)) throw new ExcepcionUsuario("Por seguridad, MultiAgente no abre rutas de red. Ábrela tú desde el Explorador si te fías de ella.");
         if (Directory.Exists(ruta)) { Abrir(ruta); return; }
         if (!File.Exists(ruta)) throw new ExcepcionUsuario($"No existe {ruta}.");
-        if (Ejecutables.Contains(Path.GetExtension(ruta)))
-            Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", ruta }, UseShellExecute = true });
-        else
+        if (AperturaSegura.Decidir(ruta, esCarpeta: false) == ComoAbrir.Abrir)
             Process.Start(new ProcessStartInfo(ruta) { UseShellExecute = true });
+        else
+            Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", ruta }, UseShellExecute = true });
     }
 
     private static void Abrir(string carpeta) =>

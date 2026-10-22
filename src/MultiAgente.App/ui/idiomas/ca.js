@@ -612,5 +612,6 @@ window.TEXTOS_ca = {
  "Ninguno.": "Cap.",
  "Abrir la sesión": "Obrir la sessió",
  " Las sesiones de esta cuenta siguen con él.": " Les sessions d'aquest compte continuen amb ell.",
- "Idioma de la aplicación": "Idioma de l'aplicació"
+ "Idioma de la aplicación": "Idioma de l'aplicació",
+ "Por seguridad, MultiAgente no abre rutas de red. Ábrela tú desde el Explorador si te fías de ella.": "Per seguretat, MultiAgente no obre rutes de xarxa. Obre-la tu des de l'Explorador si te'n fies."
 };

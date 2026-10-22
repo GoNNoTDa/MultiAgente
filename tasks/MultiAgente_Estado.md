@@ -115,3 +115,12 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
 - 20/10 F5 hecha. El uso sale del propio ACP (esquema v1: `usage_update` con `used`, `size` y `cost`; respuesta del turno
   con `usage` acumulado): no se estima nada. Cuando un agente no informa coste, las estadísticas lo dicen («—») y el
   presupuesto no se puede vigilar en esa cuenta. Plan completo (F0-F5); queda probarlo con cuentas reales.
+- 22/10 Revisión crítica completa (seguridad, núcleo, interfaz y pruebas) y arreglo de lo más grave: (1) el límite de uso
+  se reconocía por «limit»/«rate» sueltos (un error de contexto o «generate» enfriaba el equipo entero): ahora frases
+  completas, sin errores de contexto, y la respuesta corta solo cuenta al principio y en turnos sin herramientas;
+  (2) volver a abrir (o escribir en) una sesión con el agente caído lo vuelve a arrancar; (3) tras un límite la cola espera
+  al relevo y pasa a la cuenta nueva detrás de «Continúa…» (`Gestor._aMandar`, sobrevive a un destino que falla);
+  (4) abrir rutas de la conversación con lista blanca (`AperturaSegura`) y nunca rutas de red (fuga de NTLM);
+  (5) servidor local con plazo de lectura, 32 conexiones como mucho, tope de 64 MB también por trozos y pase comprobado
+  antes de leer el cuerpo. Pruebas: 147. Pendiente de la revisión: procesos hijos sin Job Object, secretos de MCP en
+  argumentos/URL, prefijos de claves en el registro, repintados de la interfaz y migraciones con datos antiguos.

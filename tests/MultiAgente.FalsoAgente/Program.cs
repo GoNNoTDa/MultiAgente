@@ -1,7 +1,8 @@
 // Agente ACP falso para las pruebas: habla JSON-RPC por stdin/stdout como claude-agent-acp, codex-acp o gemini --acp,
 // sin gastar nada. Según el texto del mensaje:
 //   «permiso» → pide permiso para escribir un fichero; «lento» → escribe durante 10 s (para interrumpir);
-//   «limite» → error de límite de uso; «plan» → manda una lista de tareas; otro → «Recibido: …».
+//   «limite» → error de límite de uso («limite tarde»: tras 1,5 s); «muere» → el proceso se cierra;
+//   «plan» → manda una lista de tareas; otro → «Recibido: …».
 // Variables: FALSO_SIN_AUTH=1 → session/new falla por autenticación; FALSO_CLAVE_ESPERADA → el método api-key exige
 // que OPENAI_API_KEY valga eso. Escribe en FALSO_REGISTRO (si se da) lo que recibe, para comprobarlo en las pruebas.
 using System.Collections.Concurrent;
@@ -156,7 +157,12 @@ async Task<JsonNode?> Prompt(JsonNode p)
 
     await Texto(sesion, "agent_thought_chunk", "Pensando…");
 
-    if (texto.Contains("limite")) throw new FalloAcp(-32000, "Usage limit reached for this account");
+    if (texto.Contains("limite"))
+    {
+        if (texto.Contains("tarde")) await Task.Delay(1500); // da tiempo a dejar mensajes en cola
+        throw new FalloAcp(-32000, "Usage limit reached for this account");
+    }
+    if (texto.Contains("muere")) Environment.Exit(3);
 
     // Lo que hace Codex con un proveedor que no es OpenAI: aviso de metadatos, arranque de MCP fallido, error HTTP como texto
     if (texto.Contains("ruido"))

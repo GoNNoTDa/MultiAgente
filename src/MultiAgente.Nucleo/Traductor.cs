@@ -31,7 +31,8 @@ public sealed class Traductor : IAsyncDisposable
     {
         _http = manejador is null ? new HttpClient() : new HttpClient(manejador, disposeHandler: false);
         _http.Timeout = TimeSpan.FromMinutes(15);
-        _servidor = new ServidorHttp(Atender);
+        // Sin pase válido se contesta 401 antes de leer el cuerpo
+        _servidor = new ServidorHttp(Atender, cabeceras => Destino(cabeceras) is not null);
     }
 
     /// <summary>
@@ -52,10 +53,10 @@ public sealed class Traductor : IAsyncDisposable
         return nuevo;
     }
 
-    private DestinoTraductor? Destino(PeticionHttp p)
+    private DestinoTraductor? Destino(IReadOnlyDictionary<string, string> cabeceras)
     {
-        var pase = p.Cabecera("x-api-key");
-        var auth = p.Cabecera("Authorization");
+        var pase = cabeceras.GetValueOrDefault("x-api-key");
+        var auth = cabeceras.GetValueOrDefault("Authorization");
         if (string.IsNullOrEmpty(pase) && auth?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true) pase = auth[7..].Trim();
         return pase is not null && _destinos.TryGetValue(pase, out var d) ? d : null;
     }
@@ -63,7 +64,7 @@ public sealed class Traductor : IAsyncDisposable
     private async Task Atender(PeticionHttp p, RespuestaHttp r, CancellationToken ct)
     {
         var ruta = p.Ruta.Split('?')[0].TrimEnd('/');
-        var destino = Destino(p);
+        var destino = Destino(p.Cabeceras);
         if (destino is null)
         {
             await Error(r, 401, "authentication_error", "Pase no válido para el traductor de MultiAgente.", ct);

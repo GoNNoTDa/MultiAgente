@@ -52,14 +52,27 @@ public sealed class RespuestaHttp(Stream salida)
 /// </summary>
 public sealed class ServidorHttp : IAsyncDisposable
 {
+    // Cualquier programa del equipo puede conectarse a 127.0.0.1: límites para que nadie lo deje sin memoria
+    private const int MaxCuerpo = 64 * 1024 * 1024;
+    private const int MaxConexiones = 32;
+
     private readonly TcpListener _escucha = new(IPAddress.Loopback, 0);
     private readonly Func<PeticionHttp, RespuestaHttp, CancellationToken, Task> _atender;
+    private readonly Func<IReadOnlyDictionary<string, string>, bool>? _admitir;
+    private readonly SemaphoreSlim _conexiones = new(MaxConexiones);
     private readonly CancellationTokenSource _fin = new();
     private readonly Task _bucle;
 
-    public ServidorHttp(Func<PeticionHttp, RespuestaHttp, CancellationToken, Task> atender)
+    /// <summary>Lo que se espera a que llegue la petición entera (la respuesta puede tardar lo que haga falta).</summary>
+    public TimeSpan PlazoLectura { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <param name="atender">Atiende cada petición.</param>
+    /// <param name="admitir">Si se da, decide con las cabeceras, antes de leer el cuerpo; si no admite, 401.</param>
+    public ServidorHttp(Func<PeticionHttp, RespuestaHttp, CancellationToken, Task> atender,
+                        Func<IReadOnlyDictionary<string, string>, bool>? admitir = null)
     {
         _atender = atender;
+        _admitir = admitir;
         _escucha.Start();
         Puerto = ((IPEndPoint)_escucha.LocalEndpoint).Port;
         _bucle = Task.Run(Escuchar);
@@ -76,7 +89,12 @@ public sealed class ServidorHttp : IAsyncDisposable
             try { cliente = await _escucha.AcceptTcpClientAsync(_fin.Token); }
             catch (Exception) when (_fin.IsCancellationRequested) { return; }
             catch (SocketException) { continue; }
-            _ = Task.Run(() => Conexion(cliente));
+            if (!_conexiones.Wait(0)) { cliente.Dispose(); continue; } // demasiadas a la vez: se cierra sin leerla
+            _ = Task.Run(async () =>
+            {
+                try { await Conexion(cliente); }
+                finally { _conexiones.Release(); }
+            });
         }
     }
 
@@ -87,9 +105,20 @@ public sealed class ServidorHttp : IAsyncDisposable
             var red = cliente.GetStream();
             try
             {
-                var peticion = await Leer(red, _fin.Token);
+                PeticionHttp? peticion;
+                using (var plazo = CancellationTokenSource.CreateLinkedTokenSource(_fin.Token))
+                {
+                    plazo.CancelAfter(PlazoLectura);
+                    peticion = await Leer(red, _admitir, plazo.Token);
+                }
                 if (peticion is null) return;
                 var respuesta = new RespuestaHttp(red);
+                if (peticion == Rechazada)
+                {
+                    await respuesta.Enviar(401, "application/json",
+                        "{\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"Pase no válido.\"}}", _fin.Token);
+                    return;
+                }
                 try { await _atender(peticion, respuesta, _fin.Token); }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -101,7 +130,11 @@ public sealed class ServidorHttp : IAsyncDisposable
         }
     }
 
-    private static async Task<PeticionHttp?> Leer(NetworkStream red, CancellationToken ct)
+    /// <summary>Marca de la petición que no se admite (se responde 401 sin leer su cuerpo).</summary>
+    private static readonly PeticionHttp Rechazada = new("", "", new Dictionary<string, string>(), []);
+
+    /// <summary>Lee la petición; null si está mal formada o es demasiado grande.</summary>
+    private static async Task<PeticionHttp?> Leer(NetworkStream red, Func<IReadOnlyDictionary<string, string>, bool>? admitir, CancellationToken ct)
     {
         // Cabeceras: hasta la línea en blanco (máximo 64 KB)
         var buffer = new MemoryStream();
@@ -126,13 +159,14 @@ public sealed class ServidorHttp : IAsyncDisposable
             var i = l.IndexOf(':');
             if (i > 0) cabeceras[l[..i].Trim()] = l[(i + 1)..].Trim();
         }
+        if (admitir is not null && !admitir(cabeceras)) return Rechazada;
         var resto = new MemoryStream();
         resto.Write(todo, fin + 4, todo.Length - fin - 4);
 
         byte[] cuerpo;
         if (cabeceras.TryGetValue("Content-Length", out var cl) && long.TryParse(cl, out var largo))
         {
-            if (largo > 64 * 1024 * 1024) return null;
+            if (largo is < 0 or > MaxCuerpo) return null;
             while (resto.Length < largo)
             {
                 var n = await red.ReadAsync(trozo, ct);
@@ -142,36 +176,52 @@ public sealed class ServidorHttp : IAsyncDisposable
             cuerpo = resto.ToArray()[..(int)Math.Min(largo, resto.Length)];
         }
         else if (cabeceras.TryGetValue("Transfer-Encoding", out var te) && te.Contains("chunked", StringComparison.OrdinalIgnoreCase))
-            cuerpo = await PorTrozos(red, resto, trozo, ct);
+        {
+            if (await PorTrozos(red, resto.ToArray(), trozo, ct) is not { } trozos) return null;
+            cuerpo = trozos;
+        }
         else cuerpo = [];
         return new PeticionHttp(primera[0], primera[1], cabeceras, cuerpo);
     }
 
-    private static async Task<byte[]> PorTrozos(NetworkStream red, MemoryStream leido, byte[] trozo, CancellationToken ct)
+    /// <summary>Cuerpo «chunked»; null si está mal formado o pasa de <see cref="MaxCuerpo"/>.</summary>
+    private static async Task<byte[]?> PorTrozos(NetworkStream red, byte[] leido, byte[] trozo, CancellationToken ct)
     {
         var salida = new MemoryStream();
-        var pendiente = new List<byte>(leido.ToArray());
+        var pendiente = new MemoryStream();
+        pendiente.Write(leido);
+        var pos = 0; // lo ya consumido de «pendiente»
         async Task<bool> Asegurar(int cuantos)
         {
-            while (pendiente.Count < cuantos)
+            while (pendiente.Length - pos < cuantos)
             {
                 var n = await red.ReadAsync(trozo, ct);
                 if (n == 0) return false;
-                pendiente.AddRange(trozo.AsSpan(0, n).ToArray());
+                pendiente.Write(trozo, 0, n);
             }
             return true;
         }
         while (true)
         {
             int finLinea;
-            while ((finLinea = Buscar([.. pendiente], pendiente.Count, "\r\n"u8)) < 0)
-                if (!await Asegurar(pendiente.Count + 1)) return salida.ToArray();
-            var tam = Convert.ToInt32(Encoding.ASCII.GetString([.. pendiente.GetRange(0, finLinea)]).Split(';')[0].Trim(), 16);
-            pendiente.RemoveRange(0, finLinea + 2);
+            while ((finLinea = pendiente.GetBuffer().AsSpan(pos, (int)pendiente.Length - pos).IndexOf("\r\n"u8)) < 0)
+            {
+                if (pendiente.Length - pos > 1024) return null; // la línea del tamaño es corta
+                if (!await Asegurar((int)pendiente.Length - pos + 1)) return salida.ToArray();
+            }
+            var linea = Encoding.ASCII.GetString(pendiente.GetBuffer(), pos, finLinea).Split(';')[0].Trim();
+            if (!int.TryParse(linea, System.Globalization.NumberStyles.HexNumber, null, out var tam) || tam < 0) return null;
+            pos += finLinea + 2;
             if (tam == 0) return salida.ToArray();
+            if (salida.Length + tam > MaxCuerpo) return null;
             if (!await Asegurar(tam + 2)) return salida.ToArray();
-            salida.Write([.. pendiente.GetRange(0, tam)]);
-            pendiente.RemoveRange(0, tam + 2);
+            salida.Write(pendiente.GetBuffer(), pos, tam);
+            pos += tam + 2;
+            // Se descarta lo consumido para no acumular todo el cuerpo dos veces
+            var queda = pendiente.GetBuffer().AsSpan(pos, (int)pendiente.Length - pos).ToArray();
+            pendiente.SetLength(0);
+            pendiente.Write(queda);
+            pos = 0;
         }
     }
 

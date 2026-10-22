@@ -254,6 +254,43 @@ public class RelevoTests
     }
 
     [Fact]
+    public async Task Lo_que_estaba_en_cola_al_llegar_al_limite_pasa_a_la_cuenta_nueva()
+    {
+        await using var m = await Montar(("Claude A", "Claude"), ("Claude B", "Claude"));
+        var id = await Nueva(m, "hola");
+        await m.En(() => m.Gestor.Enviar(id, "limite tarde", []));
+        await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Trabajando), "trabajando");
+        await m.En(() => m.Gestor.Enviar(id, "segundo", []));
+
+        await EsperarRespuesta(m, id, "Recibido: segundo");
+        var entradas = await m.En(() => m.Gestor.Viva(id)!.Hilo.Entradas);
+        // Primero «Continúa…» y después lo que esperaba, los dos con la cuenta nueva; a la agotada no le llega nada más
+        var mios = entradas.Where(e => e.Tipo == "usuario").Select(e => (e.Texto, e.Cuenta)).ToList();
+        Assert.Equal([("limite tarde", "Claude A"), ("Continúa donde lo dejaste.", "Claude B"), ("segundo", "Claude B")], mios[1..]);
+        Assert.Equal((await m.Cuenta("Claude B")).Id, (await m.Sesion(id)).CuentaId);
+    }
+
+    [Fact]
+    public async Task Si_el_agente_se_cae_al_volver_a_abrir_la_sesion_arranca_otra_vez()
+    {
+        await using var m = await Montar(("Claude A", "Claude"));
+        var id = await Nueva(m, "hola");
+        await m.En(() => m.Gestor.Enviar(id, "muere", []));
+        await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Error), "agente caído");
+
+        await m.En(() => m.Gestor.AbrirSesion(id));
+        Assert.Equal(EstadoSesion.Esperando, await m.En(() => m.Gestor.Viva(id)!.Estado));
+        await m.En(() => m.Gestor.Enviar(id, "sigo", []));
+        await EsperarRespuesta(m, id, "Recibido: sigo");
+
+        // Y escribir con el agente caído también lo vuelve a arrancar
+        await m.En(() => m.Gestor.Enviar(id, "muere", []));
+        await Esperar(async () => await m.En(() => m.Gestor.Viva(id)!.Estado == EstadoSesion.Error), "agente caído otra vez");
+        await m.En(() => m.Gestor.Enviar(id, "otra vez", []));
+        await EsperarRespuesta(m, id, "Recibido: otra vez");
+    }
+
+    [Fact]
     public async Task Las_sesiones_nuevas_del_equipo_saltan_la_cuenta_enfriando()
     {
         await using var m = await Montar(("Claude A", "Claude"), ("Claude B", "Claude"));

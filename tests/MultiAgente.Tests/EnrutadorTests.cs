@@ -99,6 +99,31 @@ public class EnrutadorTests
         else Assert.Equal(new DateTime(2026, 10, 20, 14, 30, 0, DateTimeKind.Utc).ToLocalTime(), hasta);
     }
 
+    [Theory]
+    [InlineData("Usage limit reached for this account", true)]
+    [InlineData("Claude AI usage limit reached|1760972400", true)]
+    [InlineData("You've hit your usage limit. Upgrade to Pro or try again later.", true)]
+    [InlineData("API Error: 429 {\"type\":\"error\",\"error\":{\"type\":\"rate_limit_error\"}}", true)]
+    [InlineData("{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\"}}", true)]
+    [InlineData("You exceeded your current quota, please check your plan", true)]
+    [InlineData("Rate limit exceeded", true)]
+    [InlineData("prompt is too long: 210000 tokens > 200000 maximum (context limit)", false)]
+    [InlineData("Failed to generate a response", false)]
+    [InlineData("Separate the validation from the accurate rate calculation", false)]
+    [InlineData("Internal error", false)]
+    public void Reconoce_un_error_de_limite_de_uso(string error, bool esLimite) =>
+        Assert.Equal(esLimite, SesionAgente.EsErrorDeLimite(error));
+
+    [Theory]
+    [InlineData("Claude AI usage limit reached|1760972400", true)]
+    [InlineData("5-hour limit reached ∙ resets 3pm", true)]
+    [InlineData("You've hit your limit · resets 3pm", true)]
+    [InlineData("He añadido un rate limit al endpoint de login.", false)]
+    [InlineData("Listo. Revisa la función, que ahora comprueba si el usage limit reached llega en la cabecera.", false)]
+    [InlineData("Recibido: hola", false)]
+    public void Reconoce_la_respuesta_corta_de_limite(string respuesta, bool esLimite) =>
+        Assert.Equal(esLimite, SesionAgente.EsRespuestaDeLimite(respuesta));
+
     [Fact]
     public void Sin_hora_en_el_mensaje_usa_la_del_consumo()
     {
