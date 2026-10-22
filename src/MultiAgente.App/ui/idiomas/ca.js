@@ -688,5 +688,8 @@ window.TEXTOS_ca = {
  "Ver lo anterior ({0} más)": "Veure l'anterior ({0} més)",
  "«{0}» te pide permiso": "«{0}» et demana permís",
  "«{0}» se ha parado": "«{0}» s'ha aturat",
- "«{0}» ha terminado": "«{0}» ha acabat"
+ "«{0}» ha terminado": "«{0}» ha acabat",
+ "Modo rápido: sí": "Mode ràpid: sí",
+ "Modo rápido: no": "Mode ràpid: no",
+ "Respuestas más rápidas, en los modelos que lo admiten": "Respostes més ràpides, als models que ho admeten"
 };

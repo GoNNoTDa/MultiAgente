@@ -688,5 +688,8 @@ window.TEXTOS_en = {
  "Ver lo anterior ({0} más)": "See earlier ({0} more)",
  "«{0}» te pide permiso": "«{0}» is asking for permission",
  "«{0}» se ha parado": "«{0}» has stopped",
- "«{0}» ha terminado": "«{0}» is done"
+ "«{0}» ha terminado": "«{0}» is done",
+ "Modo rápido: sí": "Fast mode: on",
+ "Modo rápido: no": "Fast mode: off",
+ "Respuestas más rápidas, en los modelos que lo admiten": "Faster responses, on the models that support it"
 };

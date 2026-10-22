@@ -195,6 +195,8 @@ function nombreOpcion(opcion, valor) {
   if (opcion.category === 'mode' && NOMBRES[valor]) return NOMBRES[valor];
   if (opcion.category === 'thought_level') return valor === 'default' ? trad('Esfuerzo predeterminado') : (NOMBRES[valor] || (o && o.name) || valor);
   if (opcion.category === 'model' && valor === 'default') return trad('Modelo predeterminado');
+  // Fast mode de Claude Code: llega como «On»/«Off» a secas, sin decir de qué
+  if (opcion.id === 'fast') return valor === 'on' ? trad('Modo rápido: sí') : trad('Modo rápido: no');
   return (o && o.name) || valor;
 }
 
@@ -652,6 +654,8 @@ function pintarAgente() {
   for (const o of opciones) {
     const sel = el('select', 'chip');
     sel.title = o.description || o.name || '';
+    // Su descripción viene en inglés; si no está disponible, añade el porqué detrás de «—»
+    if (o.id === 'fast') sel.title = [trad('Respuestas más rápidas, en los modelos que lo admiten'), (o.description || '').split(' — ')[1]].filter(Boolean).join(' — ');
     sel.setAttribute('aria-label', o.name || o.category || trad('Opción'));
     for (const v of o.options) {
       const op = new Option(nombreOpcion(o, v.value), v.value);
