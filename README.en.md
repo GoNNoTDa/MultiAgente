@@ -134,6 +134,10 @@ them to work with Claude Code.
   collapse with a click.
 - **Organizing sessions**: drag a session onto another project, or use its **⋯** (right-click) › *Move to*.
   The same menu renames it (or double-click its title at the top). Moving it doesn't change its working folder.
+- **Archiving a whole project**: the project's **⋯** › *Archive all its sessions…*. They move to *Archived* (nothing is
+  deleted); any that are working or asking for permission stay. The notice has *Undo*.
+- **Search** (sidebar, or Ctrl+K): searches titles and what you and the agents have written, archived sessions included,
+  ignoring capital letters and accents. Opening a result scrolls the conversation to the message it found.
 - **Diff viewer** (**± Changes**, in the session header): a panel on the right whose width you can drag.
   - **Folder**: everything that changed since the last git commit (by any agent or by hand), file by file,
     with coloured diffs.
@@ -179,11 +183,19 @@ them to work with Claude Code.
 
 ## 8. Moving to another PC
 
-1. On the new PC, install the requirements (§1).
-2. **Close MultiAgente** on the old PC and copy the whole folder.
-3. Open it on the new one. Your accounts, teams, projects and sessions are there. If an account shows *Needs
-   authorizing*, press **Authorize…**.
-4. Sessions work in their folder's path: if a project lives somewhere else on the new PC, put it at the same path (or
+**The easy way: *Move to another PC…*** (bottom of the sidebar, next to the language). It creates a `.zip` with the program,
+your projects, sessions and conversations, accounts, teams and extensions, while MultiAgente is open. **It carries no
+credentials**: neither each account's sign-in nor the keys (MCP keys included), so the file gives access to nothing if it's
+lost. The log and the window preferences aren't included either.
+
+1. On the new PC, unzip it anywhere and open `MultiAgente.exe`.
+2. *Install what's missing* on the start screen (§1).
+3. In Accounts and providers, **Authorize…** each subscription account and paste the key of the API ones.
+
+**By hand**: with MultiAgente closed, copy the whole folder (this does carry sign-ins and keys). On the new PC install the
+requirements (§1) and open it; if an account shows *Needs authorizing*, press **Authorize…**.
+
+Either way: sessions work in their folder's path: if a project lives somewhere else on the new PC, put it at the same path (or
    start new sessions in the new location; to point the project at it: **⋯** › *Rename or change folder…*).
 
 **Where everything is stored**: in the `datos\` folder next to `MultiAgente.exe`; nothing in the Windows registry or in

@@ -22,6 +22,8 @@ const S = {
   nueva: { carpeta: null, proyectoId: null },
   cajaActiva: null,
   historial: [],
+  encontradas: {},              // id → sesión abierta desde la búsqueda que no sale en el lateral
+  irA: null,                    // entrada a la que bajar al abrir una sesión desde la búsqueda
 };
 
 function ses(id) {
@@ -210,6 +212,9 @@ function mostrar(vista) {
   $('vExtensiones').hidden = vista !== 'extensiones';
   $('vEstadisticas').hidden = vista !== 'estadisticas';
   $('vConsumo').hidden = vista !== 'consumo';
+  $('vBuscar').hidden = vista !== 'buscar';
+  $('btnBuscar').classList.toggle('on', vista === 'buscar');
+  if (vista === 'buscar') setTimeout(() => { $('buscarTexto').focus(); $('buscarTexto').select(); }, 0);
   $('btnConsumo').classList.toggle('on', vista === 'consumo');
   if (vista === 'consumo') pintarConsumo();
   $('btnEstadisticas').classList.toggle('on', vista === 'estadisticas');
@@ -252,7 +257,10 @@ function traducirEstado(e) {
 
 function todasLasSesiones() {
   if (!S.estado) return [];
-  return [...S.estado.proyectos.flatMap((p) => p.sesiones.map((s) => ({ ...s, proyectoId: p.id }))), ...S.estado.sueltas, ...(S.estado.archivadas || []).map((s) => ({ ...s, archivada: true }))];
+  const todas = [...S.estado.proyectos.flatMap((p) => p.sesiones.map((s) => ({ ...s, proyectoId: p.id }))), ...S.estado.sueltas, ...(S.estado.archivadas || []).map((s) => ({ ...s, archivada: true }))];
+  // Archivadas antiguas abiertas desde la búsqueda (el lateral solo trae las 100 más recientes)
+  for (const x of Object.values(S.encontradas)) if (!todas.some((s) => s.id === x.id)) todas.push(x);
+  return todas;
 }
 
 function estadoDe(s) {
@@ -681,6 +689,16 @@ function pintarConversacion() {
   const s = S.actual && S.sesiones[S.actual];
   if (s) for (const id of s.orden) cont.append(nodoEntrada(s.entradas.get(id)));
   pintarTrabajando();
+  const destino = S.irA && cont.querySelector(`[data-id="${CSS.escape(S.irA)}"]`);
+  if (destino) {
+    // Viene de la búsqueda: se enseña el mensaje encontrado en vez del final
+    S.irA = null;
+    pegado = false;
+    destino.scrollIntoView({ block: 'center' });
+    destino.classList.add('destacada');
+    setTimeout(() => destino.classList.remove('destacada'), 2500);
+    return;
+  }
   bajar(true);
 }
 
@@ -1605,6 +1623,27 @@ function alRecibir(m) {
       if (m.sesionId === S.actual) { pintarConversacion(); pintarAgente(); }
       break;
     }
+    case 'trasladoListo': {
+      const mb = Math.max(1, Math.round(m.bytes / 1048576));
+      let texto = trad('Listo: {0} ({1} MB). Cópialo al otro PC, descomprímelo y abre MultiAgente.exe.', m.nombre, mb);
+      if (m.omitidos) texto += ' ' + trad('{0} ficheros estaban en uso y no se han copiado (detalle en el registro).', m.omitidos);
+      aviso(texto);
+      break;
+    }
+    case 'resultados':
+      if (m.peticion === peticionBusqueda) pintarResultados(m);
+      break;
+    case 'proyectoArchivado': {
+      const p = S.estado.proyectos.find((x) => x.id === m.proyectoId);
+      const nombre = p ? p.nombre : '';
+      const n = m.archivadas.length;
+      let texto = n === 0 ? trad('No se ha archivado ninguna sesión.')
+        : n === 1 ? trad('1 sesión de «{0}» archivada.', nombre) : trad('{0} sesiones de «{1}» archivadas.', n, nombre);
+      if (m.ocupadas) texto += ' ' + (m.ocupadas === 1 ? trad('Una está en marcha y no se ha tocado.') : trad('{0} están en marcha y no se han tocado.', m.ocupadas));
+      if (S.vista === 'sesion' && m.archivadas.includes(S.actual)) mostrar('inicio');
+      aviso(texto, n ? { texto: trad('Deshacer'), alPulsar: () => enviar({ tipo: 'desarchivar', sesionIds: m.archivadas }) } : undefined);
+      break;
+    }
     case 'entrada':
       actualizarEntrada(m.sesionId, m.entrada);
       if (m.sesionId === S.actual && m.entrada.tipo === 'herramienta') pedirCambiosLuego();
@@ -1626,6 +1665,10 @@ function alRecibir(m) {
       break;
     case 'carpeta':
       if (m.para === 'nueva') { S.nueva.carpeta = m.ruta; S.nueva.proyectoId = null; pintarCamposNueva(); cajaNueva.ta.focus(); }
+      if (m.para === 'traslado') {
+        aviso(trad('Preparando el fichero… Puede tardar un poco si hay muchas conversaciones.'));
+        enviar({ tipo: 'llevarAOtroPc', carpeta: m.ruta });
+      }
       if (m.para === 'proyecto') {
         $('dpRuta').value = m.ruta;
         if (!$('dpNombre').value.trim()) $('dpNombre').value = m.ruta.split('\\').filter(Boolean).pop() || '';
@@ -1816,6 +1859,7 @@ function menuProyecto(p, donde) {
     { texto: trad('Cambiar nombre o carpeta…'), accion: () => dialogoProyecto(p) },
     { texto: trad('Abrir la carpeta'), accion: () => enviar({ tipo: 'abrirRuta', ruta: p.ruta }) },
     '-',
+    { texto: trad('Archivar todas sus sesiones…'), peligro: true, accion: () => archivarProyecto(p) },
     { texto: trad('Quitar el proyecto…'), peligro: true, accion: async () => {
       if (await preguntar({ titulo: trad('¿Quitar el proyecto «{0}»?', p.nombre), texto: trad('Sus sesiones no se borran: pasan a «Sin proyecto». La carpeta no se toca.'), aceptar: trad('Quitar proyecto'), peligro: true }))
         enviar({ tipo: 'proyectoBorrar', id: p.id });
@@ -1852,6 +1896,85 @@ function archivarSesion(id) {
   enviar({ tipo: 'archivar', sesionId: id });
   if (S.actual === id) mostrar('inicio');
   aviso(trad('«{0}» archivada.', s ? s.titulo : trad('Sesión')), { texto: trad('Deshacer'), alPulsar: () => enviar({ tipo: 'desarchivar', sesionId: id }) });
+}
+
+// Archivar un proyecto entero sí pregunta (son muchas a la vez); también se deshace desde el aviso
+async function archivarProyecto(p) {
+  const n = p.sesiones.length;
+  if (!n) { aviso(trad('«{0}» no tiene sesiones que archivar.', p.nombre)); return; }
+  const titulo = n === 1 ? trad('¿Archivar la sesión de «{0}»?', p.nombre) : trad('¿Archivar las {0} sesiones de «{1}»?', n, p.nombre);
+  const texto = trad('Pasan a «Archivadas»: no se borra nada y las puedes restaurar cuando quieras. Las que estén trabajando o pidiendo permiso se quedan como están.');
+  if (await preguntar({ titulo, texto, aceptar: trad('Archivar') })) enviar({ tipo: 'archivarProyecto', proyectoId: p.id });
+}
+
+// ------------------------------------------------------------------ llevar a otro PC
+
+async function llevarAOtroPc() {
+  const ok = await preguntar({
+    titulo: trad('Llevar MultiAgente a otro PC'),
+    texto: trad('Se crea un .zip con el programa, tus proyectos, conversaciones, cuentas, equipos y extensiones. Por seguridad no lleva los inicios de sesión ni las claves. En el otro PC: descomprímelo, abre MultiAgente.exe, instala lo que falte desde la pantalla de inicio y vuelve a autorizar cada cuenta (o pega su clave). Las carpetas de tus proyectos no van dentro: tienen que estar en la misma ruta.'),
+    aceptar: trad('Elegir dónde guardarlo…'),
+  });
+  if (ok) enviar({ tipo: 'elegirCarpeta', para: 'traslado', titulo: trad('Dónde guardar el fichero para el otro PC') });
+}
+
+// ------------------------------------------------------------------ buscar
+
+let peticionBusqueda = 0;
+let temporizadorBusqueda = null;
+
+function buscarLuego() {
+  clearTimeout(temporizadorBusqueda);
+  temporizadorBusqueda = setTimeout(() => {
+    const texto = $('buscarTexto').value.trim();
+    peticionBusqueda++;
+    if (texto.length < 2) { pintarResultados(null, texto); return; }
+    $('buscarInfo').textContent = trad('Buscando…');
+    enviar({ tipo: 'buscar', texto, peticion: peticionBusqueda });
+  }, 250);
+}
+
+function pintarResultados(m, texto) {
+  const lista = $('buscarLista');
+  const info = $('buscarInfo');
+  lista.replaceChildren();
+  if (!m) {
+    info.textContent = texto ? trad('Escribe al menos dos letras.') : '';
+    lista.hidden = true;
+    return;
+  }
+  const n = m.resultados.length;
+  info.textContent = n === 0 ? trad('Ninguna sesión dice «{0}».', m.texto)
+    : n >= 50 ? trad('Las 50 sesiones más recientes con «{0}».', m.texto)
+    : n === 1 ? trad('1 sesión') : trad('{0} sesiones', n);
+  lista.hidden = n === 0;
+  for (const r of m.resultados) {
+    const titulo = r.titulo === 'Sesión nueva' ? trad('Sesión nueva') : r.titulo;
+    const b = el('button', 'resultado');
+    const cab = el('span', 'r-cab');
+    cab.append(el('b', 'r-tit', titulo));
+    if (r.archivada) cab.append(el('span', 'insignia', trad('Archivada')));
+    cab.append(el('span', 'tenue', [r.proyecto || trad('Sin proyecto'), fechaCorta(r.ultimoUso)].join(' · ')));
+    if (r.coincidencias > 1) cab.append(el('span', 'tenue', trad('{0} veces', r.coincidencias)));
+    const [i, largo] = r.marca;
+    const frag = el('span', 'r-frag');
+    frag.append(r.fragmento.slice(0, i), el('mark', '', r.fragmento.slice(i, i + largo)), r.fragmento.slice(i + largo));
+    b.append(cab, frag);
+    b.addEventListener('click', () => abrirResultado(r));
+    lista.append(b);
+  }
+}
+
+function abrirResultado(r) {
+  if (!todasLasSesiones().some((s) => s.id === r.sesionId)) {
+    const c = S.estado.cuentas.find((x) => x.id === r.cuentaId);
+    S.encontradas[r.sesionId] = {
+      id: r.sesionId, titulo: r.titulo, carpeta: r.carpeta, cuentaId: r.cuentaId, cuenta: c && c.alias,
+      proveedor: c && c.proveedor, equipoId: r.equipoId, estado: 'Cerrada', archivada: true,
+    };
+  }
+  S.irA = r.entradaId;
+  abrirSesion(r.sesionId);
 }
 
 let proyectoEditado = null;
@@ -2309,6 +2432,19 @@ const cajaSesion = crearCaja($('abajoSesion'), 'sesion');
 
 $('btnNueva').addEventListener('click', () => mostrar('inicio'));
 $('btnCuentas').addEventListener('click', () => mostrar('cuentas'));
+$('btnBuscar').addEventListener('click', () => mostrar('buscar'));
+$('btnTraslado').addEventListener('click', llevarAOtroPc);
+$('buscarTexto').addEventListener('input', buscarLuego);
+$('buscarTexto').addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { const r = $('buscarLista').querySelector('.resultado'); if (r) { e.preventDefault(); r.focus(); } }
+});
+$('buscarLista').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  const r = e.target.closest('.resultado');
+  const otro = r && (e.key === 'ArrowDown' ? r.nextElementSibling : r.previousElementSibling);
+  e.preventDefault();
+  if (otro) otro.focus(); else if (e.key === 'ArrowUp') $('buscarTexto').focus();
+});
 $('btnIrCuentas').addEventListener('click', () => mostrar('cuentas'));
 $('btnRecomprobar').addEventListener('click', () => enviar({ tipo: 'recomprobar' }));
 $('btnInstalar').addEventListener('click', () => enviar({ tipo: 'instalarRequisitos' }));
@@ -2416,6 +2552,7 @@ $('chkResumen').addEventListener('change', (e) => enviar({ tipo: 'ajuste', clave
 
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); mostrar('inicio'); }
+  if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); mostrar('buscar'); }
 });
 window.addEventListener('focus', () => { enviar({ tipo: 'recomprobar' }); if (S.vista === 'sesion') pedirCambiosLuego(); });
 if (puente) puente.addEventListener('message', (e) => alRecibir(e.data));

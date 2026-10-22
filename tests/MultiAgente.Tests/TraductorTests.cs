@@ -28,7 +28,8 @@ internal sealed class ProveedorOpenAIFalso : IAsyncDisposable
             var texto = ultimo["content"] is JsonValue v ? v.GetValue<string>() : "";
             if (o["model"]?.GetValue<string>() == "en-cola")
             {
-                try { await Task.Delay(5000, ct); } catch (OperationCanceledException) { }
+                // Mucho más que la espera del traductor (1 s), aunque el equipo vaya cargado; al cerrar se corta
+                try { await Task.Delay(30000, ct); } catch (OperationCanceledException) { }
                 return;
             }
             if (o["model"]?.GetValue<string>() == "no-existe")

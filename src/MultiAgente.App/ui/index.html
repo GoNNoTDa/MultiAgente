@@ -47,6 +47,7 @@
   <aside>
     <button class="nueva" id="btnNueva" title="Nueva sesión (Ctrl+N)"><svg class="i" aria-hidden="true"><use href="#i-nueva"/></svg> Nueva sesión <kbd>Ctrl+N</kbd></button>
     <nav class="menu">
+      <button id="btnBuscar" title="Buscar en las conversaciones (Ctrl+K)"><svg class="i" aria-hidden="true"><use href="#i-buscar"/></svg>Buscar</button>
       <button id="btnCuentas"><svg class="i" aria-hidden="true"><use href="#i-cuentas"/></svg>Cuentas y proveedores</button>
       <button id="btnExtensiones"><svg class="i" aria-hidden="true"><use href="#i-extensiones"/></svg>Extensiones</button>
       <button id="btnEstadisticas"><svg class="i" aria-hidden="true"><use href="#i-estadisticas"/></svg>Estadísticas</button>
@@ -58,7 +59,10 @@
       <h4>Cuentas</h4>
       <div id="cuentasLat"></div>
     </div>
-    <label class="idioma-lat"><span>Idioma</span><select id="selIdioma" aria-label="Idioma de la aplicación"></select></label>
+    <div class="idioma-lat">
+      <label><span>Idioma</span><select id="selIdioma" aria-label="Idioma de la aplicación"></select></label>
+      <button class="enlace" id="btnTraslado" title="Un fichero con tus proyectos, conversaciones y cuentas para seguir en otro PC">Llevar a otro PC…</button>
+    </div>
   </aside>
 
   <main>
@@ -102,6 +106,18 @@
       </header>
       <div class="conv" id="conv"><div class="col" id="entradas"></div></div>
       <div class="abajo" id="abajoSesion"></div>
+    </section>
+
+    <!-- Buscar en las conversaciones -->
+    <section class="vista" id="vBuscar" hidden>
+      <div class="conv"><div class="col ancha">
+        <h1>Buscar</h1>
+        <p class="sub">En los títulos y en lo que habéis escrito tú y los agentes, también en las sesiones archivadas. Da igual
+          que escribas con mayúsculas o sin tildes.</p>
+        <input id="buscarTexto" class="buscador" type="search" placeholder="¿Qué buscas?" aria-label="Buscar en las conversaciones" spellcheck="false" autocomplete="off">
+        <p class="tenue buscar-info" id="buscarInfo" aria-live="polite"></p>
+        <div class="lista" id="buscarLista" hidden></div>
+      </div></div>
     </section>
 
     <!-- Estadísticas -->

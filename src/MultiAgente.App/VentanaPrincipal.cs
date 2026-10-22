@@ -28,6 +28,9 @@ public partial class VentanaPrincipal : Form
     private bool _cerrando;
     private int _cerrada;
 
+    /// <summary>La base abierta (para copiarla al llevar MultiAgente a otro PC).</summary>
+    internal BaseDatos Bd => _bd;
+
     /// <param name="captura">Guardar una captura PNG en este fichero y cerrar (pruebas).</param>
     /// <param name="fueraDePantalla">Abrir fuera de la pantalla y sin botón en la barra de tareas (pruebas).</param>
     public VentanaPrincipal(Rutas rutas, BaseDatos bd, string? captura = null, bool fueraDePantalla = false)

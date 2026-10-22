@@ -126,6 +126,10 @@ para un servidor propio con vLLM, por ejemplo): MultiAgente lleva un **traductor
   con un clic.
 - **Organizar las sesiones**: arrastra una sesión a otro proyecto, o usa su «⋯» (clic derecho) › «Mover a». Ahí mismo se le
   cambia el nombre (o con doble clic en su título, arriba). Moverla no cambia su carpeta de trabajo.
+- **Archivar un proyecto entero**: «⋯» del proyecto › «Archivar todas sus sesiones…». Pasan a «Archivadas» (no se borra
+  nada); las que están trabajando o pidiendo permiso se quedan. El aviso trae «Deshacer».
+- **Buscar** (lateral, o Ctrl+K): busca en los títulos y en lo que habéis escrito tú y los agentes, también en las sesiones
+  archivadas, sin distinguir mayúsculas ni tildes. Al abrir un resultado, la conversación baja hasta el mensaje encontrado.
 - **Visor de cambios** («± Cambios» en la cabecera de la sesión): panel a la derecha, con el ancho que quieras (arrastra su
   borde).
   - **Carpeta**: todo lo que ha cambiado desde el último commit de git (de cualquier agente o a mano), fichero a fichero,
@@ -170,11 +174,19 @@ En **🧩 Extensiones** (lateral) está lo que usan todas tus cuentas. Los cambi
 
 ## 8. Llevarlo a otro PC
 
-1. En el PC nuevo, instala los requisitos (§1).
-2. **Cierra MultiAgente** en el PC viejo y copia la carpeta entera.
-3. Ábrelo en el nuevo. Tus cuentas, equipos, proyectos y sesiones están ahí. Si alguna cuenta sale «Falta autorizar»,
-   pulsa «Autorizar…».
-4. Las sesiones trabajan en la ruta de su carpeta: si en el PC nuevo un proyecto está en otro sitio, ponlo en la misma ruta
+**Lo más fácil: «Llevar a otro PC…»** (abajo del lateral, junto al idioma). Crea un `.zip` con el programa, tus proyectos,
+sesiones y conversaciones, cuentas, equipos y extensiones, con MultiAgente abierto. **No lleva credenciales**: ni los
+inicios de sesión de cada cuenta ni las claves (tampoco las de los MCP), así que el fichero no da acceso a nada si se pierde.
+Tampoco lleva el registro ni las preferencias de la ventana.
+
+1. En el PC nuevo, descomprímelo donde quieras y abre `MultiAgente.exe`.
+2. «Instalar lo que falta» en la pantalla de inicio (§1).
+3. En Cuentas y proveedores, «Autorizar…» cada cuenta de suscripción y pega la clave de las de API.
+
+**A mano**: con MultiAgente cerrado, copia la carpeta entera (esto sí lleva los inicios de sesión y las claves).
+En el PC nuevo instala los requisitos (§1) y ábrelo; si alguna cuenta sale «Falta autorizar», pulsa «Autorizar…».
+
+En los dos casos: las sesiones trabajan en la ruta de su carpeta: si en el PC nuevo un proyecto está en otro sitio, ponlo en la misma ruta
    (o empieza sesiones nuevas en la nueva; para que el proyecto apunte a ella: «⋯» › «Cambiar nombre o carpeta…»).
 
 **Dónde se guarda todo**: en la carpeta `datos\` junto a `MultiAgente.exe`; nada en el registro de Windows ni en

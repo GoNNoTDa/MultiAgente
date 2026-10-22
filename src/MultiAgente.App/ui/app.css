@@ -63,7 +63,9 @@ aside{width:272px;background:var(--lateral);border-right:1px solid var(--linea);
 .cta .a{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cta .e{font-size:11.5px;color:var(--tenue)} .cta .e.falta{color:var(--ambar)}
 .idioma-lat{display:flex;align-items:center;gap:8px;border-top:1px solid var(--linea);padding:8px 18px;font-size:12px;color:var(--tenue)}
-.idioma-lat select{flex:1;border:1px solid transparent;background:none;color:var(--suave);border-radius:6px;padding:3px 4px;font:inherit;cursor:pointer}
+.idioma-lat label{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.idioma-lat .enlace{font-size:12px;white-space:nowrap}
+.idioma-lat select{flex:1;min-width:0;border:1px solid transparent;background:none;color:var(--suave);border-radius:6px;padding:3px 4px;font:inherit;cursor:pointer}
 .idioma-lat select:hover{background:var(--burbuja)}
 
 /* ---------- Vistas */
@@ -592,3 +594,16 @@ body.veterano #abajoSesion .pie>span:first-child{visibility:hidden}
 }
 .banda.relevo>div>span span{flex:none}
 .banda.relevo>div>span .motivo{flex:0 1 auto;min-width:0}
+
+/* Buscar en las conversaciones */
+.buscador{width:100%;border:1px solid var(--linea2);background:var(--tarjeta);border-radius:10px;padding:10px 14px;font-size:15px;color:var(--texto)}
+.buscar-info{margin:10px 2px 12px;font-size:13px;min-height:1.5em}
+.resultado{display:flex;flex-direction:column;gap:4px;width:100%;text-align:left;border:0;border-top:1px solid var(--linea);background:none;padding:10px 16px}
+.resultado:first-child{border-top:0}
+.resultado:hover,.resultado:focus-visible{background:var(--sel)}
+.r-cab{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:12.5px}
+.r-tit{font-size:14px;font-weight:600;color:var(--texto)}
+.r-frag{font-size:13px;color:var(--suave);overflow-wrap:anywhere}
+.r-frag mark,.resultado mark{background:var(--ambar-fondo);color:var(--texto);box-shadow:inset 0 -2px 0 var(--ambar-borde);border-radius:2px;padding:0 1px}
+.insignia{font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--linea2);color:var(--tenue)}
+#entradas .destacada{outline:2px solid var(--ambar-borde);outline-offset:4px;border-radius:8px;transition:outline-color 1s}

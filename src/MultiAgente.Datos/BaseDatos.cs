@@ -124,6 +124,17 @@ public sealed class BaseDatos : IDisposable
         return cmd;
     }
 
+    /// <summary>Copia coherente de la base, aunque esté en uso (copia de seguridad de SQLite).</summary>
+    public void CopiarA(string fichero)
+    {
+        lock (_cerrojo)
+        {
+            using var destino = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = fichero, Pooling = false }.ToString());
+            destino.Open();
+            _conexion.BackupDatabase(destino);
+        }
+    }
+
     public void Dispose()
     {
         lock (_cerrojo) _conexion.Dispose();

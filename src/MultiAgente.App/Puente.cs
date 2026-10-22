@@ -50,6 +50,13 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
             case "instalarRequisitos":
                 InstalarRequisitos();
                 break;
+            case "llevarAOtroPc":
+            {
+                var r = await Traslado.Crear(rutas, Texto(m, "carpeta") ?? "", ventana.Bd.CopiarA);
+                ventana.Enviar(new { tipo = "trasladoListo", ruta = r.Zip, nombre = Path.GetFileName(r.Zip), r.Bytes, omitidos = r.Omitidos.Count });
+                Process.Start(new ProcessStartInfo("explorer.exe") { ArgumentList = { "/select,", r.Zip }, UseShellExecute = true });
+                break;
+            }
             case "abrirCarpeta":
                 Abrir(Texto(m, "que") switch { "datos" => rutas.Datos, "logs" => rutas.Logs, _ => rutas.Raiz });
                 break;
@@ -149,8 +156,24 @@ internal sealed class Puente(VentanaPrincipal ventana, Rutas rutas, Gestor servi
                 await servicio.Archivar(Texto(m, "sesionId") ?? "");
                 break;
             case "desarchivar":
-                servicio.Desarchivar(Texto(m, "sesionId") ?? "");
+                if (m.TryGetProperty("sesionIds", out var ids) && ids.ValueKind == JsonValueKind.Array)
+                    servicio.Desarchivar(ids.EnumerateArray().Select(x => x.GetString() ?? "").ToList());
+                else servicio.Desarchivar(Texto(m, "sesionId") ?? "");
                 break;
+            case "archivarProyecto":
+            {
+                var proyectoId = Texto(m, "proyectoId") ?? "";
+                var (archivadas, ocupadas) = await servicio.ArchivarProyecto(proyectoId);
+                ventana.Enviar(new { tipo = "proyectoArchivado", proyectoId, archivadas, ocupadas });
+                break;
+            }
+            case "buscar":
+            {
+                var texto = Texto(m, "texto") ?? "";
+                var resultados = await servicio.Buscar(texto);
+                ventana.Enviar(new { tipo = "resultados", peticion = m.TryGetProperty("peticion", out var p) ? p.GetInt32() : 0, texto, resultados });
+                break;
+            }
             case "sesionRenombrar":
                 servicio.RenombrarSesion(Texto(m, "sesionId") ?? "", Texto(m, "titulo") ?? "");
                 break;

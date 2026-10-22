@@ -198,7 +198,36 @@
         setTimeout(() => emitir({ tipo: 'cambioFichero', sesionId: m.sesionId, ruta: m.ruta, texto: m.ruta.endsWith('.png') ? '' : DIF, binario: m.ruta.endsWith('.png'), recortado: false }), 150);
         break;
       case 'archivar': sesiones.find((x) => x.id === m.sesionId).archivada = true; emitir(estado()); break;
-      case 'desarchivar': sesiones.find((x) => x.id === m.sesionId).archivada = false; emitir(estado()); break;
+      case 'desarchivar':
+        for (const id of m.sesionIds || [m.sesionId]) sesiones.find((x) => x.id === id).archivada = false;
+        emitir(estado());
+        break;
+      case 'llevarAOtroPc': setTimeout(() => emitir({ tipo: 'trasladoListo', ruta: m.carpeta + '\\MultiAgente-2026-10-22-0915.zip', nombre: 'MultiAgente-2026-10-22-0915.zip', bytes: 61 * 1048576, omitidos: 0 }), 800); break;
+      case 'archivarProyecto': {
+        const archivadas = sesiones.filter((x) => x.proyectoId === m.proyectoId && !x.archivada && !['Trabajando', 'PidePermiso'].includes(x.estado));
+        archivadas.forEach((x) => { x.archivada = true; });
+        const ocupadas = sesiones.filter((x) => x.proyectoId === m.proyectoId && !x.archivada).length;
+        emitir(estado());
+        emitir({ tipo: 'proyectoArchivado', proyectoId: m.proyectoId, archivadas: archivadas.map((x) => x.id), ocupadas });
+        break;
+      }
+      case 'buscar': {
+        const q = m.texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+        const resultados = sesiones.map((s) => {
+          const textos = s.id === 's1' ? entradas.filter((e) => e.tipo === 'usuario' || e.tipo === 'agente') : [];
+          const hallados = textos.filter((e) => e.texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(q));
+          const enTitulo = s.titulo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(q);
+          if (!hallados.length && !enTitulo) return null;
+          const base = hallados.length ? hallados[0].texto.replace(/\s+/g, ' ') : s.titulo;
+          const i = base.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().indexOf(q);
+          return { sesionId: s.id, titulo: s.titulo, proyecto: (proyectos.find((p) => p.id === s.proyectoId) || {}).nombre, archivada: !!s.archivada,
+            ultimoUso: new Date(Date.now() - 3600000 * (s.id.charCodeAt(1) - 48)).toISOString(), coincidencias: hallados.length + (enTitulo ? 1 : 0),
+            fragmento: base.slice(0, 180), marca: [i, m.texto.length], entradaId: hallados.length ? hallados[0].id : null,
+            carpeta: s.carpeta, cuentaId: s.cuentaId, equipoId: s.equipoId };
+        }).filter(Boolean);
+        setTimeout(() => emitir({ tipo: 'resultados', peticion: m.peticion, texto: m.texto, resultados }), 150);
+        break;
+      }
       case 'sesionMover': sesiones.find((x) => x.id === m.sesionId).proyectoId = m.proyectoId; emitir(estado()); break;
       case 'sesionRenombrar': sesiones.find((x) => x.id === m.sesionId).titulo = m.titulo; emitir(estado()); break;
       case 'proyectoGuardar': {

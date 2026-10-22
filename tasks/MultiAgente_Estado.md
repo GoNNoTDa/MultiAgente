@@ -124,3 +124,13 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
   (5) servidor local con plazo de lectura, 32 conexiones como mucho, tope de 64 MB también por trozos y pase comprobado
   antes de leer el cuerpo. Pruebas: 147. Pendiente de la revisión: procesos hijos sin Job Object, secretos de MCP en
   argumentos/URL, prefijos de claves en el registro, repintados de la interfaz y migraciones con datos antiguos.
+- 22/10 Buscar, archivar un proyecto y llevar a otro PC (petición del usuario):
+  (1) «Buscar» (lateral o Ctrl+K, `GestorBusqueda`): títulos y mensajes de usuario y agente de todas las sesiones, también
+  archivadas, sin mayúsculas ni tildes (CompareInfo invariante); filtro rápido sobre el jsonl en bruto antes de leerlo;
+  50 como mucho, las más recientes primero; al abrir un resultado baja al mensaje y lo resalta. Las archivadas que no salen
+  en el lateral (solo trae 100) se abren con los datos del resultado (`S.encontradas`).
+  (2) «⋯» del proyecto › «Archivar todas sus sesiones…»: pregunta, deja las que trabajan o piden permiso y se deshace.
+  (3) «Llevar a otro PC…» (`Traslado`): .zip con programa y datos con la app abierta (copia de la base con la API de copia
+  de SQLite); sin credenciales (inicio de sesión de cada CLI, `sessions\*.key` de Claude Code, bóveda), sin caché del
+  navegador, registros ni uniones NTFS (se rehacen al arrancar). Con los datos reales de este PC: 533 MB, 0 credenciales.
+  Pruebas: 154. `tools\ui-prueba.html` simula las tres cosas.
