@@ -155,3 +155,9 @@ D3 relevo a otro proveedor automático con cuenta atrás si el equipo lo permite
   subagentes (herramientas «Agent»/«Task») con sus acciones (`parentToolUseId` de claude-agent-acp → `Entrada.Padre`),
   la última y lo que dicen; se abre solo cuando hay actividad salvo que el usuario lo cierre. Los textos de un subagente
   ya no se mezclan con la respuesta: van a su herramienta (`Entrada.Texto`). Pruebas: 160.
+- 22/10 (3) (1) A veces lo enviado no aparecía hasta cambiar de conversación: pulsar dentro de ella (abrir un bloque,
+  seleccionar, «Copiar») recalculaba al soltar si se estaba al final y, si el contenido había crecido, dejaba de seguirlo;
+  lo nuevo se pintaba fuera de la vista. Ahora solo cuenta la barra de desplazamiento (y rueda/teclado), y al enviar
+  siempre baja. Además, reabrir una sesión a mitad de turno manda también lo del turno en curso (`SesionAgente.Conversacion`).
+  (2) Un borrador por sesión (texto y adjuntos): ya no se comparte la caja entre conversaciones; el texto se guarda
+  también para la próxima vez. Pruebas: 161.

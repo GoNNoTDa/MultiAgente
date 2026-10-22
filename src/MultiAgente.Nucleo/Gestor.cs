@@ -762,7 +762,7 @@ public sealed partial class Gestor : IAsyncDisposable
         {
             if (viva.Estado != EstadoSesion.Error)
             {
-                _enviar(new { tipo = "conversacion", sesionId = id, entradas = viva.Hilo.Entradas, agente = Agente(viva) });
+                _enviar(new { tipo = "conversacion", sesionId = id, entradas = viva.Conversacion(), agente = Agente(viva) });
                 if (_relevos.TryGetValue(id, out var r)) EnviarRelevo(r);
                 return;
             }

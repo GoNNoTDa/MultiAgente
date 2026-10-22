@@ -272,6 +272,7 @@ function mostrar(vista) {
 }
 
 function abrirSesion(id) {
+  cambiarBorrador(id);
   guardarLocal('ultimaSesion', id);
   S.actual = id;
   mostrar('sesion');
@@ -1066,7 +1067,7 @@ function crearCaja(contenedor, modo) {
   };
   const activar = () => { S.cajaActiva = c; };
   c.ta.addEventListener('focus', activar);
-  c.ta.addEventListener('input', () => { ajustarAlto(c); pintarOrdenes(c); });
+  c.ta.addEventListener('input', () => { ajustarAlto(c); pintarOrdenes(c); if (c.modo === 'sesion') guardarBorrador(c); });
   c.ta.addEventListener('keydown', (e) => teclaCaja(c, e));
   c.ta.addEventListener('paste', (e) => pegar(c, e));
   c.mas.addEventListener('click', () => { activar(); enviar({ tipo: 'elegirFicheros', titulo: trad('Adjuntar ficheros') }); });
@@ -1118,6 +1119,33 @@ function enviarDesde(c) {
   guardarLocal('enviados', String(n));
   document.body.classList.toggle('veterano', n >= 3);
   limpiarCaja(c, texto);
+  guardarBorrador(c);
+  bajar(true); // lo que acabas de mandar (y lo que conteste) se ve siempre, aunque estuvieras más arriba
+}
+
+// Cada sesión tiene su borrador: lo escrito (y adjuntado) a medias se queda en ella al cambiar de conversación. El
+// texto se guarda también para la próxima vez que se abra MultiAgente; los adjuntos, mientras esté abierto.
+const BORRADORES = (() => { try { return JSON.parse(leerLocal('borradores') || '{}') || {}; } catch { return {}; } })();
+const ADJUNTOS_BORRADOR = {};
+
+function guardarBorrador(c) {
+  if (!c.de) return;
+  if (c.ta.value.trim()) BORRADORES[c.de] = c.ta.value; else delete BORRADORES[c.de];
+  if (c.adjuntos.length) ADJUNTOS_BORRADOR[c.de] = c.adjuntos; else delete ADJUNTOS_BORRADOR[c.de];
+  guardarLocal('borradores', JSON.stringify(BORRADORES));
+}
+
+/** Pone en la caja de la sesión el borrador de <id> (guardando antes el de la que se deja). */
+function cambiarBorrador(id) {
+  const c = cajaSesion;
+  if (c.de === id) return;
+  guardarBorrador(c);
+  c.de = id;
+  c.ta.value = BORRADORES[id] || '';
+  c.adjuntos = ADJUNTOS_BORRADOR[id] || [];
+  pintarPend(c);
+  ajustarAlto(c);
+  pintarOrdenes(c);
 }
 
 function limpiarCaja(c, texto) {
@@ -2682,7 +2710,13 @@ setInterval(pintarConsumo, 30000);
 
 $('conv').addEventListener('wheel', () => requestAnimationFrame(() => { pegado = cercaDelFinal(); }), { passive: true });
 $('conv').addEventListener('keydown', () => requestAnimationFrame(() => { pegado = cercaDelFinal(); }));
-$('conv').addEventListener('mousedown', () => { const fin = () => { pegado = cercaDelFinal(); document.removeEventListener('mouseup', fin); }; document.addEventListener('mouseup', fin); });
+// Solo la barra de desplazamiento (el clic cae en el propio contenedor): abrir un bloque, seleccionar texto o pulsar
+// «Copiar» no es «irse hacia arriba», aunque el contenido crezca y el final quede más abajo
+$('conv').addEventListener('mousedown', (e) => {
+  if (e.target !== $('conv')) return;
+  const fin = () => { pegado = cercaDelFinal(); document.removeEventListener('mouseup', fin); };
+  document.addEventListener('mouseup', fin);
+});
 new ResizeObserver(() => bajar()).observe($('conv'));
 new ResizeObserver(() => bajar()).observe($('entradas'));
 

@@ -743,6 +743,22 @@ public sealed class SesionAgente : IAsyncDisposable
         EntradaCambiada?.Invoke(this, e.Clonar());
     }
 
+    /// <summary>
+    /// La conversación como se ve ahora: lo guardado más lo del turno en curso, que solo se guarda al terminarlo (sin
+    /// esto, reabrir la sesión a mitad de un turno dejaba de enseñar lo que el agente llevaba hecho).
+    /// </summary>
+    public List<Entrada> Conversacion()
+    {
+        var todas = Hilo.Entradas.ToList();
+        lock (_cerrojo)
+            foreach (var e in _turno)
+            {
+                var i = todas.FindIndex(x => x.Id == e.Id);
+                if (i >= 0) todas[i] = e.Clonar(); else todas.Add(e.Clonar());
+            }
+        return todas;
+    }
+
     private void CerrarTurno()
     {
         List<Entrada> turno;

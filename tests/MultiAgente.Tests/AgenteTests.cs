@@ -250,6 +250,19 @@ public class AgenteTests
     }
 
     [Fact]
+    public async Task A_mitad_de_turno_la_conversacion_incluye_lo_que_lleva_hecho()
+    {
+        await using var m = await Arrancado("agente");
+        var a = m.Agente;
+        a.Enviar("escribe lento");
+        await Esperar(() => a.Conversacion().Any(e => e.Tipo == "agente" && e.Texto!.Length >= 3), "texto del turno en curso");
+        Assert.DoesNotContain(a.Hilo.Entradas, e => e.Tipo == "agente"); // aún no está guardado…
+        Assert.Contains(a.Conversacion(), e => e.Tipo == "usuario" && e.Texto == "escribe lento"); // …pero se ve todo
+        await a.Interrumpir();
+        await EsperarTurno(a, 2);
+    }
+
+    [Fact]
     public async Task Lo_del_subagente_queda_en_su_herramienta_y_no_en_la_respuesta()
     {
         await using var m = await Arrancado("agente");
